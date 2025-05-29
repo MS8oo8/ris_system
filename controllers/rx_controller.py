@@ -88,10 +88,10 @@ class RxController(Controller):
     def _measure(self, config: Dict) -> List[float]:
         if self._test_mode:
             result = -80 + np.random.rand() * 20
-            self._avg_power_history = 10.0 * pow(self._avg_power_history / 10.0) * self._log_history_coeff
-            self._avg_power_history += 10.0 * pow(result / 10.0) * (1.0 - self._log_history_coeff)
+            self._avg_power_history = pow(10.0, self._avg_power_history / 10.0) * self._log_history_coeff
+            self._avg_power_history += pow(10.0, result / 10.0) * (1.0 - self._log_history_coeff)
             self._avg_power_history = 10.0 * np.log10(self._avg_power_history)
-            log.info(f"Average power: {result:.2f} dBm")
+            log.info(f"Avg: {self._avg_power_history:.2f} dBm; Current: {result:.2f} dBm")
             return [result] #symulation
         
         power_measurements = []
@@ -102,6 +102,9 @@ class RxController(Controller):
             power_lin = np.mean(np.abs(samples) ** 2)
             power_log = 10 * np.log10(power_lin)
             power_measurements.append(float(power_log))
-        
-        log.info(f"Average power: {power_measurements:.2f} dBm")
+
+            self._avg_power_history = pow(10.0, self._avg_power_history / 10.0) * self._log_history_coeff
+            self._avg_power_history += power_lin * (1.0 - self._log_history_coeff)
+            self._avg_power_history = 10.0 * np.log10(self._avg_power_history)
+            log.info(f"Avg: {self._avg_power_history:.2f} dBm; Current: {power_log:.2f} dBm")
         return power_measurements

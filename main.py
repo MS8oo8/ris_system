@@ -13,7 +13,7 @@ PORT_PUSH_PULL = 5559
 TEST_MODE = True
 
 log.remove()
-log.add(sys.stderr, level="INFO") 
+log.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss.SSS}</green> | {message}", colorize=True) 
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
