@@ -54,11 +54,11 @@ class GeneratorParams(BaseModel):
 
 
 class RxParams(BaseModel):
-    samp_rate: float = 1e6 # 8e6
+    samp_rate: float = 500e3 # 8e6
     rx_gain: float = 40.0
     #tutaj ustawiona ilość RXow
     count: int = 1
-    buffer_size: int = int(100e3) #32768 #int(1e6) #1024
+    buffer_size: int = int(40e3) #32768 #int(1e6) #1024
     N: int = 1
 
 
@@ -73,7 +73,8 @@ class Params(BaseModel):
     generator: GeneratorParams = GeneratorParams(model = GeneratorModel.SMBV100A)
     rxes: RxParams = RxParams()
     rises: Dict[str, RisParams] = Field(default={
-        '0': RisParams()
+        '0': RisParams(),
+        '1': RisParams()
         
         
         

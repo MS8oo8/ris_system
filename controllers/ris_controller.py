@@ -99,8 +99,8 @@ class RisController(Controller):
                 log.warning('this action is not defined!')
 
     def _configure_ris(self, config: Dict):
+        log.info(f"SET {config['index']}: {config['pattern']}")
         if self._test_mode:
-            log.info(f"SET {config['index']}: {config['pattern']}")
             return
 
         if 'pattern' in config:
@@ -122,7 +122,7 @@ class RisController(Controller):
             response = self.ser.readline()
             # print(response)
             if response.strip() == b"#OK":
-                log.info(f"SET: {pattern}")
+                # log.info(f"SET: {pattern}")
                 return True
             if time.time() - start_time > 10:
                 log.error("RIS: Timeout during pattern setting.")

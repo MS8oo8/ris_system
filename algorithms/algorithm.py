@@ -105,10 +105,13 @@ class ExampleAlgorithm(Algorithm):
         } #patterny same paskki pojedyncze - pojedyncze o roznej długosci - bez przeprlatych (do 4 grubosci)
         self.signal_power = [10.0] #5.0, 10.0
 
-        self._ris_count == 1
         # TO JEST TYLKO DLA OPCJI Z DWOMA RISAMI - nie mozna tego uzywac dla jednego...
-        # self.configs = np.array(np.meshgrid(list(self.all_patterns.keys()), list(self.all_patterns.keys()))).T.reshape(-1, 2)
-        self.configs = np.array(list(self.all_patterns.keys()))
+        if self._ris_count == 1:
+            self.configs = np.array(list(self.all_patterns.keys()))
+        elif self._ris_count == 2:
+            self.configs = np.array(np.meshgrid(list(self.all_patterns.keys()), list(self.all_patterns.keys()))).T.reshape(-1, 2)
+        else:
+            assert False
 
         self.data = np.nan * np.ones((self._rx_count, self.configs.shape[0], len(self.signal_power)))
 
@@ -144,10 +147,16 @@ class ExampleAlgorithm(Algorithm):
             generator_params.connection.transmit_power = self.signal_power[self.signal_power_itr]
 
         ris_params = deepcopy(Parameters().get().rises)
-        for ris_id in ris_params:
-            # ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # FOR 2 RIS
-            ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr]]  # FOR 1 RIS
-            ris_params[ris_id].index = int(self.configs[self.config_itr])
+        if self._ris_count == 1:
+            for ris_id in ris_params:
+                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr]]  # FOR 1 RIS
+                ris_params[ris_id].index = int(self.configs[self.config_itr])
+        elif self._ris_count == 2:
+            for ris_id in ris_params:
+                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # FOR 2 RIS
+                ris_params[ris_id].index = int(self.configs[self.config_itr, int(ris_id)])
+        else:
+            assert False
  
         self.waiting_for = self._rx_count
         return generator_params, ris_params
@@ -197,7 +206,7 @@ class ExampleAlgorithm(Algorithm):
             # one RX best pattern (one power)
             self.selected_config = np.argmax(self.data, axis=1)[0][0] # for 1 RIS
             for i in range(len(self.configs)):
-                log.info('Pattern {} avg. power: {} dBm {}', i, self.data[0, i, 0], " --- selected " if i == self.selected_config else "")
+                log.info('Pattern {} avg. power: {} dBm {}', self.configs[i], self.data[0, i, 0], " --- selected " if i == self.selected_config else "")
 
     def _next_data_collection_iteration(self) -> None:
         self.config_itr += 1
@@ -212,8 +221,14 @@ class ExampleAlgorithm(Algorithm):
         # SELECT BEST ? CHANGE / ETC.
         # print(self.config_itr)
         ris_params = deepcopy(Parameters().get().rises)
-        for ris_id in ris_params:
-            # ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # for 2 RIS
-            ris_params[ris_id].pattern = self.all_patterns[self.configs[self.selected_config]] # for 1 RIS
-            ris_params[ris_id].index = int(self.configs[self.selected_config])
+        if self._ris_count == 1:
+            for ris_id in ris_params:
+                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.selected_config]] # for 1 RIS
+                ris_params[ris_id].index = int(self.configs[self.selected_config])
+        elif self._ris_count == 2:
+            for ris_id in ris_params:
+                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # for 2 RIS
+                ris_params[ris_id].index = int(self.configs[self.selected_config, int(ris_id)])
+        else:
+            assert False
         return ris_params
