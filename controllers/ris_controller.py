@@ -100,7 +100,7 @@ class RisController(Controller):
 
     def _configure_ris(self, config: Dict):
         if self._test_mode:
-            log.info('(TEST) RIS {} configured', self._component_id)
+            log.info(f"SET {config['index']}: {config['pattern']}")
             return
 
         if 'pattern' in config:
@@ -122,7 +122,7 @@ class RisController(Controller):
             response = self.ser.readline()
             # print(response)
             if response.strip() == b"#OK":
-                log.info(f"RIS: Pattern {pattern} successfully set.")
+                log.info(f"SET: {pattern}")
                 return True
             if time.time() - start_time > 10:
                 log.error("RIS: Timeout during pattern setting.")

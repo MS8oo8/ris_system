@@ -64,6 +64,7 @@ class RxParams(BaseModel):
 
 class RisParams(BaseModel):
     pattern: str = None
+    index: int = None
 
 
 
@@ -126,8 +127,8 @@ class Parameters(metaclass=SingletonMeta):
         for rx in range(rx_count):
             filename = os.path.join(results_dir, f"experiment_result_rx_{rx}_{timestamp}.csv")
             df = pd.DataFrame(data[rx, :], columns=["Result"])
-            df.to_csv(filename, index=False)
-            log.info("Saved experiment results to {}", filename)
+            # df.to_csv(filename, index=False)
+            log.debug("Saved experiment results to {}", filename)
 
     def save_algorithm_results_to_csv(self, data: np.ndarray, configs: np.ndarray, signal_power: list) -> None:
         results_dir = "results"
@@ -159,8 +160,8 @@ class Parameters(metaclass=SingletonMeta):
 
             df = pd.DataFrame(rows)
             filename = os.path.join(results_dir, f"algorithm_results_rx_{rx}_{timestamp}.csv")
-            df.to_csv(filename, index=False)
-            log.info("Saved algorithm results for RX {} to {}", rx, filename)
+            # df.to_csv(filename, index=False)
+            log.debug("Saved algorithm results for RX {} to {}", rx, filename)
 
     def export_all_results_to_zip(self, zip_filename: str = None):
         results_dir = "results"

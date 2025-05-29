@@ -144,7 +144,7 @@ class SystemLogic:
             return request
 
         if self._data_collection_phase:
-            log.info('Finished data collection phase. Starting experiment phase.') 
+            log.info('Starting experiment phase.') 
             self._data_collection_phase = False
 
         if not self._experiment.finished():

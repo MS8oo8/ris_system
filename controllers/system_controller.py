@@ -74,7 +74,7 @@ class SystemController:
                     self._system_logic.rises.received_ready(ris_id)
                 else:
                     Parameters().get().rises[ris_id] = ris_request
-                    log.info('set RIS {} pattern {}', ris_id, ris_request.pattern)
+                    log.debug('set RIS {} pattern {}', ris_id, ris_request.pattern)
                     self._send_message({'component': 'ris', 'id': ris_id, 'action': 'configure', 'data': ris_request.model_dump()})
 
     def _send_message(self, message: Dict):
@@ -102,7 +102,7 @@ class SystemController:
                 log.info('Generator is ready to operate.')
             case 'configure-ack':
                 self._system_logic.generator.received_ready(device_id=message['id'])
-                log.info('Generator changed configuration.')
+                log.debug('Generator changed configuration.')
             case _:
                 log.warning('no handler defined for this action!')
  
@@ -117,7 +117,7 @@ class SystemController:
                 log.info('RIS {} is ready to operate.', message['id'])
             case 'configure-ack':
                 self._system_logic.rises.received_ready(device_id=message['id'])
-                log.info('RIS {} changed configuration.', message['id'])
+                log.debug('RIS {} changed configuration.', message['id'])
             case _:
                 log.warning('no handler defined for this action!')
 
