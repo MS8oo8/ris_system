@@ -72,11 +72,11 @@ class RisController(Controller):
         # print(port)
         if not self._test_mode:
             from serial import Serial
-        self.ser = Serial(port, baudrate=115200, timeout=10)
-        self.ser.flushInput()
-        self.ser.flushOutput()
-        self.id = id
-        self.timeout = 10 #timeout
+            self.ser = Serial(port, baudrate=115200, timeout=10)
+            self.ser.flushInput()
+            self.ser.flushOutput()
+            self.id = id
+            self.timeout = 10 #timeout
 
 
     def _on_message_received(self, message: Dict):

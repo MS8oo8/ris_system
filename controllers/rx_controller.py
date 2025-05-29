@@ -24,7 +24,7 @@ class RxController(Controller):
         self._rx_gain = None
         self._buffer_size = None #327680
         self._N = None #8
-        
+
         if self._test_mode:
             print(f"Symulacja połączenia z USRP")
         else:
@@ -35,7 +35,7 @@ class RxController(Controller):
             	usrp = uhd.usrp.MultiUSRP("serial=3273AD8")
             # elif self._component_id == '1':
            # 	usrp = uhd.usrp.MultiUSRP("serial=3273ACF")
-        
+
 
     def _on_message_received(self, message: Dict):
         match message['action']:

@@ -85,7 +85,7 @@ class Parameters(metaclass=SingletonMeta):
     def __init__(self):
         self.data = Params()
         self._ris_port_map = {}
-        self._ris_available_ports = self._scan_usb_ports()
+        self._ris_available_ports = None # self._scan_usb_ports()
 
         # log przypisanych portów
         for ris_id in self.data.rises:

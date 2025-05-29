@@ -53,7 +53,7 @@ if __name__ == '__main__':
                 controller.run()
             case "ris":
                 import time
-                time.sleep(10)
+                # time.sleep(10)
                 assert len(sys.argv) == 3
                 log.info('Starting RisController')
                 controller = RisController(

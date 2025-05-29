@@ -16,6 +16,9 @@ class Experiment:
 
     def store_results(self, device_id: str, results) -> None:
         raise NotImplementedError
+    
+    def reset(self) -> None:
+        raise NotImplementedError
 
 
 class ExampleExperiment(Experiment):
@@ -28,6 +31,10 @@ class ExampleExperiment(Experiment):
         self._rx_count = Parameters().get().rxes.count
         self._data = np.nan * np.ones((self._rx_count, len(self._power_setup)))
         self._waiting_for = 0
+
+    def reset(self) -> None:
+        self._itr = 0
+        self._data[:] = np.nan
 
     def finished(self):
         return self._itr == len(self._power_setup) and not np.isnan(self._data).any()

@@ -25,6 +25,9 @@ class Algorithm:
     def store_results(self, device_id: str, results) -> None:
         raise NotImplementedError
 
+    def reset(self) -> None:
+        raise NotImplementedError
+
 
 class ExampleAlgorithm(Algorithm):
 
@@ -48,6 +51,9 @@ class ExampleAlgorithm(Algorithm):
         self.config_itr = 0
 
         self.waiting_for = 0
+
+    def reset(self) -> None:
+        self.data[:] = np.nan
 
     def data_collection_finished(self):
         return not np.isnan(self.data).any()

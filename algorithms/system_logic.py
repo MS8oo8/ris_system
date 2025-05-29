@@ -164,20 +164,17 @@ class SystemLogic:
 
 
         if self._experiment.finished():
-            log.info('Experiment finished. Start next cycle of algorithm phase')
+            log.info('Experiment finished. Restart algorithm.')
+            self._algorithm.reset()
+            self._experiment.reset()
             self._data_collection_phase = True
-            self._measurment_queued = False
-            self._algorithm.data = np.full(
-                (
-                    self._algorithm._rx_count,
-                    self._algorithm.configs.shape[0],
-                    len(self._algorithm.signal_power)
-                ),
-                np.nan,
-                dtype = float
-            )
-            self._algorithm.waiting_for = self._algorithm._rx_count
-            #self._measurment_queued = False
+            request = self._algorithm.data_collection_request()
+
+            self.generator.wait()
+            self.rises.wait()
+            self._measurment_queued = True
+
+            return request
             log.info(f'Reset algorithm data to nan: \n{self._algorithm.data}')
 
 

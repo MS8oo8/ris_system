@@ -41,16 +41,16 @@ class SystemController:
             log.info('Start measurements')
             self._send_message({'component': 'rx', 'action': 'measure', 'data': {}})
 
-        #generator_request, rises_requests = self._system_logic.generate_configuration_change_requests()
-        result = self._system_logic.generate_configuration_change_requests()
-        if result is None:
-            print("=================================================")
-            generator_request, rises_requests = None, None
-        else:
-            print("WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWw")
-            generator_request, rises_requests = result
-            print(f'generator: {generator_request}')
-            print(f'ris: {rises_requests}')
+        generator_request, rises_requests = self._system_logic.generate_configuration_change_requests()
+        # result = self._system_logic.generate_configuration_change_requests()
+        # if result is None:
+        #     # print("=================================================")
+        #     generator_request, rises_requests = None, None
+        # else:
+        #     # print("WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWw")
+        #     generator_request, rises_requests = result
+        #     # print(f'generator: {generator_request}')
+        #     # print(f'ris: {rises_requests}')
 
 
         if generator_request is not None:
