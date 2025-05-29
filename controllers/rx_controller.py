@@ -19,6 +19,9 @@ class RxController(Controller):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._avg_power_history = -100.0 
+        self._log_history_coeff = 0.95
+
         self._frequency = None
         self._samp_rate = None
         self._rx_gain = None
@@ -32,7 +35,7 @@ class RxController(Controller):
             import uhd
             global usrp
             if self._component_id == '0':
-            	usrp = uhd.usrp.MultiUSRP("serial=3273AD8")
+            	usrp = uhd.usrp.MultiUSRP("serial=3113F10")
             # elif self._component_id == '1':
            # 	usrp = uhd.usrp.MultiUSRP("serial=3273ACF")
 
@@ -84,8 +87,12 @@ class RxController(Controller):
 
     def _measure(self, config: Dict) -> List[float]:
         if self._test_mode:
-            log.info('(TEST) RX {} measurement in progress', self._component_id)
-            return [-68.8] #symulation
+            result = -80 + np.random.rand() * 20
+            self._avg_power_history = 10.0 * pow(self._avg_power_history / 10.0) * self._log_history_coeff
+            self._avg_power_history += 10.0 * pow(result / 10.0) * (1.0 - self._log_history_coeff)
+            self._avg_power_history = 10.0 * np.log10(self._avg_power_history)
+            log.info(f"Average power: {result:.2f} dBm")
+            return [result] #symulation
         
         power_measurements = []
         while len(power_measurements) < self._N:
@@ -96,5 +103,5 @@ class RxController(Controller):
             power_log = 10 * np.log10(power_lin)
             power_measurements.append(float(power_log))
         
-        log.info(f"Measured {self._N} power samples")
+        log.info(f"Average power: {power_measurements:.2f} dBm")
         return power_measurements

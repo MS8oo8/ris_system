@@ -13,7 +13,7 @@ PORT_PUSH_PULL = 5559
 TEST_MODE = True
 
 log.remove()
-log.add(sys.stderr, level="DEBUG") 
+log.add(sys.stderr, level="INFO") 
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
@@ -29,6 +29,7 @@ if __name__ == '__main__':
         cmd = str(sys.argv[1])
         match cmd:
             case "generator":
+                TEST_MODE = True
                 log.info('Starting GeneratorController')
                 controller = GeneratorController(
                     component_name='generator',
@@ -36,7 +37,7 @@ if __name__ == '__main__':
                     controller_address=SYSTEM_CONTROLLER_ADDRESS,
                     port_sub=PORT_PUB_SUB,
                     port_push=PORT_PUSH_PULL,
-                    test_mode=True #TEST_MODE
+                    test_mode=TEST_MODE
                 )
                 controller.run()
             case "rx":

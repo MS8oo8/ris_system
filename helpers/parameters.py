@@ -54,11 +54,11 @@ class GeneratorParams(BaseModel):
 
 
 class RxParams(BaseModel):
-    samp_rate: float = 600000 # 8e6
+    samp_rate: float = 1e6 # 8e6
     rx_gain: float = 40.0
     #tutaj ustawiona ilość RXow
     count: int = 1
-    buffer_size: int = 32768 #int(1e6) #32768 #int(1e6) #1024
+    buffer_size: int = int(100e3) #32768 #int(1e6) #1024
     N: int = 1
 
 

@@ -185,7 +185,7 @@ class SystemLogic:
     def receive_measurement_results(self, device_id: str, results: Dict) -> None:
         if self._data_collection_phase:
             self._algorithm.store_results(device_id, results)
-            log.info("Got algorithm measurement from {}: {}", device_id, results)
+            log.debug("Got algorithm measurement from {}: {}", device_id, results)
         else:
             self._experiment.store_results(device_id, results)
-            log.info("Got experiment measurement from {}: {}", device_id, results)
+            log.debug("Got experiment measurement from {}: {}", device_id, results)

@@ -25,7 +25,7 @@ class ExampleExperiment(Experiment):
 
     def __init__(self):
         #ustawiamy jedna próbkę 
-        self._power_setup = [-15.0] * 2 # + [-10.0] *10 + [-5.0] * 10 + [0.0] * 10 + [5.0] * 10 + [10]  * 10 + [-15]  *10 
+        self._power_setup = [-15.0] * 100 # + [-10.0] *10 + [-5.0] * 10 + [0.0] * 10 + [5.0] * 10 + [10]  * 10 + [-15]  *10 
         #self._power_setup = [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50
         self._itr = 0
         self._rx_count = Parameters().get().rxes.count
@@ -43,7 +43,7 @@ class ExampleExperiment(Experiment):
         if self._waiting_for > 0:
             return None
 
-        log.info('Experiment step {}/{}: power {} ', 
+        log.debug('Experiment step {}/{}: power {} ', 
                 self._itr + 1, len(self._power_setup), self._power_setup[self._itr])
 
         params = deepcopy(Parameters().get().generator)

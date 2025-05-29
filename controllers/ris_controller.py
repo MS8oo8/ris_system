@@ -120,7 +120,7 @@ class RisController(Controller):
         start_time = time.time()
         while True:
             response = self.ser.readline()
-            print(response)
+            # print(response)
             if response.strip() == b"#OK":
                 log.info(f"RIS: Pattern {pattern} successfully set.")
                 return True

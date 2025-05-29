@@ -40,7 +40,7 @@ class ExampleAlgorithm(Algorithm):
             2: "0x2000200020002000200020002000200020002000200020002000200020002000",
 
         } #patterny same paskki pojedyncze - pojedyncze o roznej długosci - bez przeprlatych (do 4 grubosci)
-        self.signal_power = [10.0] * 3 #5.0, 10.0
+        self.signal_power = [10.0] #5.0, 10.0
 
         self._ris_count == 1
         self.configs = np.array(np.meshgrid(list(self.all_patterns.keys()), list(self.all_patterns.keys()))).T.reshape(-1, 2)
@@ -52,8 +52,11 @@ class ExampleAlgorithm(Algorithm):
 
         self.waiting_for = 0
 
+        self.reset()
+
     def reset(self) -> None:
         self.data[:] = np.nan
+        log.info("Searching best pattern...")
 
     def data_collection_finished(self):
         return not np.isnan(self.data).any()

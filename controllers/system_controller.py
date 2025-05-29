@@ -38,7 +38,7 @@ class SystemController:
 
     def _generate_messages(self):
         if self._system_logic.generate_measurement_command():
-            log.info('Start measurements')
+            log.debug('Start measurements')
             self._send_message({'component': 'rx', 'action': 'measure', 'data': {}})
 
         generator_request, rises_requests = self._system_logic.generate_configuration_change_requests()
@@ -74,6 +74,7 @@ class SystemController:
                     self._system_logic.rises.received_ready(ris_id)
                 else:
                     Parameters().get().rises[ris_id] = ris_request
+                    log.info('set RIS {} pattern {}', ris_id, ris_request.pattern)
                     self._send_message({'component': 'ris', 'id': ris_id, 'action': 'configure', 'data': ris_request.model_dump()})
 
     def _send_message(self, message: Dict):
@@ -132,6 +133,6 @@ class SystemController:
             case 'measure-ack':
                 self._system_logic.rxes.received_ready(device_id=message['id'])
                 self._system_logic.receive_measurement_results(device_id=message['id'], results=message['data'])
-                log.info('RX {} measured: {}', message['id'], message['data'])
+                log.debug('RX {} measured: {}', message['id'], message['data'])
             case _:
                 log.warning('no handler defined for this action!')
