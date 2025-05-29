@@ -2,8 +2,6 @@ import zmq
 from loguru import logger as log
 import time
 #import json
-from RsSmw import *
-from RsSmbv import * 
 
 from typing import Dict, Callable
 from helpers.zmq_connection import ZmqClient
@@ -39,8 +37,10 @@ class GeneratorController(Controller):
             try:
                 resource = f'TCPIP::{self._ip_address}::{self._port}::{self._connection_type}'
                 if self._generator_model == GeneratorModel.SMM100A:
+                    from RsSmw import RsSmw
                     self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
                 elif self._generator_model == GeneratorModel.SMBV100A:
+                    from RsSmbv import RsSmbv 
                     self._generator = RsSmbv(resource, True, False, "SelectVisa='socket'")
                 
                 log.info(f"[INFO] Connected to generator {self._generator_model} at {resource}")

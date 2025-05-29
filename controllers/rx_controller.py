@@ -9,7 +9,7 @@ from typing import Dict, Callable, List
 from helpers.zmq_connection import ZmqClient
 from controllers.controller import Controller
 import time
-import uhd
+
 
 usrp = None 
 
@@ -29,6 +29,7 @@ class RxController(Controller):
             print(f"Symulacja połączenia z USRP")
         else:
             #time.sleep(10)
+            import uhd
             global usrp
             if self._component_id == '0':
             	usrp = uhd.usrp.MultiUSRP("serial=3273AD8")

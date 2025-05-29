@@ -10,7 +10,7 @@ from algorithms.experiment import ExampleExperiment
 SYSTEM_CONTROLLER_ADDRESS = 'localhost' #'192.168.8.219' #
 PORT_PUB_SUB = 5558
 PORT_PUSH_PULL = 5559
-TEST_MODE = False
+TEST_MODE = True
 
 log.remove()
 log.add(sys.stderr, level="DEBUG") 

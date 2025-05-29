@@ -15,7 +15,7 @@ import os
     #from serial import Serial
 #else:
 #Serial = Mock()
-from serial import Serial
+
     
 
 # class MockSerial:
@@ -70,6 +70,8 @@ class RisController(Controller):
         # else:
         # print("!!!!!!!!!!!!!!!!!!")
         # print(port)
+        if not self._test_mode:
+            from serial import Serial
         self.ser = Serial(port, baudrate=115200, timeout=10)
         self.ser.flushInput()
         self.ser.flushOutput()
