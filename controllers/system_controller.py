@@ -11,11 +11,12 @@ from algorithms.algorithm import Algorithm
 from algorithms.experiment import Experiment
 
 
-from prometheus_client import Gauge
+from prometheus_client import Gauge, Info
 g_rx_power = Gauge('rx_power', 'Description of gauge', labelnames=['rx'])
 g_rx_power_by_pattern = Gauge('rx_power_by_pattern', 'Description of gauge', labelnames=['ris_0'])
 g_selected_pattern = Gauge('selected_pattern', 'Description of gauge', labelnames=['ris_0'])
-
+g_info = Info('selected_pattern_png', 'description', labelnames=['ris_id'])
+g_selected_pattern_index = Gauge('selected_pattern_index', 'description', labelnames=['ris_id'])
 
 class SystemController:
     def __init__(self,
@@ -154,6 +155,8 @@ class SystemController:
                     g_selected_pattern.labels(ris_0=str(i).zfill(2)).set(0)
                 if selected is not None and selected == ris_0_pattern:
                     g_selected_pattern.labels(ris_0=str(ris_0_pattern).zfill(2)).set(1)
+                    g_info.labels(ris_id=0).info({'path': f'{str(ris_0_pattern).zfill(2)}.png' })
+                    g_selected_pattern_index.labels(ris_id=0).set(ris_0_pattern)
                 # end of display
 
                 log.debug('RX {} measured: {}', message['id'], message['data'])
