@@ -74,7 +74,7 @@ class Params(BaseModel):
     rxes: RxParams = RxParams()
     rises: Dict[str, RisParams] = Field(default={
         '0': RisParams(),
-        '1': RisParams()
+        # '1': RisParams()
         
         
         

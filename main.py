@@ -6,6 +6,7 @@ from controllers.rx_controller import RxController
 from controllers.ris_controller import RisController
 from algorithms.algorithm import ExampleAlgorithm
 from algorithms.experiment import ExampleExperiment
+from prometheus_client import start_http_server
 
 SYSTEM_CONTROLLER_ADDRESS = 'localhost' #'192.168.8.219' #
 PORT_PUB_SUB = 5558
@@ -18,6 +19,7 @@ log.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss.SSS}</green> | {
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         log.info('Starting SystemController')
+        start_http_server(8000)
         controller = SystemController(
             port_pub=PORT_PUB_SUB,
             port_pull=PORT_PUSH_PULL,

@@ -1,4 +1,5 @@
 import zmq
+import numpy as np
 # from enum import StrEnum
 from typing import Dict, Callable
 from loguru import logger as log
@@ -9,6 +10,11 @@ from algorithms.system_logic import SystemLogic
 from algorithms.algorithm import Algorithm
 from algorithms.experiment import Experiment
 
+
+from prometheus_client import Gauge
+g_rx_power = Gauge('rx_power', 'Description of gauge', labelnames=['rx'])
+g_rx_power_by_pattern = Gauge('rx_power_by_pattern', 'Description of gauge', labelnames=['ris_0'])
+g_selected_pattern = Gauge('selected_pattern', 'Description of gauge', labelnames=['ris_0'])
 
 
 class SystemController:
@@ -133,6 +139,23 @@ class SystemController:
             case 'measure-ack':
                 self._system_logic.rxes.received_ready(device_id=message['id'])
                 self._system_logic.receive_measurement_results(device_id=message['id'], results=message['data'])
+
+                # display prometheus
+                value_rx_power = float(np.mean(message['data']))
+                ris_0_pattern = Parameters().get().rises['0'].index
+                # ris_1_pattern = Parameters().get().rises['1'].index
+                selected = self._system_logic._algorithm.selected_config
+
+                g_rx_power.labels(rx=0).set(value_rx_power)
+                
+                g_rx_power_by_pattern.labels(ris_0=str(ris_0_pattern).zfill(2)).set(value_rx_power)
+
+                for i in range(len(self._system_logic._algorithm.configs)):
+                    g_selected_pattern.labels(ris_0=str(i).zfill(2)).set(0)
+                if selected is not None and selected == ris_0_pattern:
+                    g_selected_pattern.labels(ris_0=str(ris_0_pattern).zfill(2)).set(1)
+                # end of display
+
                 log.debug('RX {} measured: {}', message['id'], message['data'])
             case _:
                 log.warning('no handler defined for this action!')
