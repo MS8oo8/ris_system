@@ -155,6 +155,9 @@ class AlgorithmParams(BaseModel):
         }#patterny same paskki pojedyncze - pojedyncze o roznej długosci - bez przeprlatych (do 4 grubosci)
     )
     
+class AlgorithmSignalPower(BaseModel):
+    signal_power: List[float] = [10.0, 5.0]
+    
 
 
 class Params(BaseModel):
@@ -167,6 +170,7 @@ class Params(BaseModel):
     })
     experiment: ExperimentParams = ExperimentParams()
     algorithm: AlgorithmParams = AlgorithmParams()
+    Algorithm_Signal_Power: AlgorithmSignalPower = AlgorithmSignalPower()
     usrp: UsrpParams = UsrpParams()                             
 
 

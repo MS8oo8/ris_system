@@ -36,7 +36,7 @@ class ExampleAlgorithm(Algorithm):
 
         self.all_patterns =Parameters().get().algorithm.all_patterns
 
-        self.signal_power = [10.0] #5.0, 10.0
+        self.signal_power = Parameters().get().Algorithm_Signal_Power.signal_power
 
         self._ris_count == 1
         # TO JEST TYLKO DLA OPCJI Z DWOMA RISAMI - nie mozna tego uzywac dla jednego...
