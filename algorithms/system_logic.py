@@ -175,7 +175,7 @@ class SystemLogic:
             self._measurment_queued = True
 
             return request
-            log.info(f'Reset algorithm data to nan: \n{self._algorithm.data}')
+            #log.info(f'Reset algorithm data to nan: \n{self._algorithm.data}')
 
 
         return (None, None)  # FINISHED

@@ -35,11 +35,10 @@ class RxController(Controller):
             import uhd
             global usrp
             if self._component_id == '0':
-            	usrp = uhd.usrp.MultiUSRP("serial=3113F10")
-            # elif self._component_id == '1':
-           # 	usrp = uhd.usrp.MultiUSRP("serial=3273ACF")
-
-
+                usrp = uhd.usrp.MultiUSRP("serial=3113F10")
+            #elif self._component_id == '1':
+            #	usrp = uhd.usrp.MultiUSRP("serial=3273ACF")
+            
     def _on_message_received(self, message: Dict):
         match message['action']:
             case 'new-ack':

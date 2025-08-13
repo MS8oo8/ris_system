@@ -84,7 +84,6 @@ class GeneratorController(Controller):
         
         if not self._test_mode and self._generator:
             if self._generator_model == GeneratorModel.SMM100A:
-                #self._generator.source.bb.dm.set_state(True)
                 self._generator.source.frequency.fixed.set_value(self._frequency)
                 self._generator.source.power.level.immediate.set_amplitude(self._transmit_power)
                 self._generator.output.state.set_value(self._transmission_enabled) 
@@ -92,21 +91,6 @@ class GeneratorController(Controller):
                 self._generator.source.frequency.fixed.set_value(self._frequency)
                 self._generator.source.power.level.immediate.set_amplitude(self._transmit_power)
                 self._generator.output.state.set_value(self._transmission_enabled)
-                #self._generator.output.state.set_value(True) 
-            
-            # if self._mode == "wlan": # tu ustawia 
-            #     #self._generator.source.bb.wlnn.set_value(True)
-            #     self._generator.source.bb.wlnn.waveform.set_create("IEEE80211a")
-            #     self._generator.source.bb.wlnn.set_bandwidth(bwidth=enums.WlannTxBw.BW20)
-            # elif self._mode == 'dvbt': #jeszcze nie testowane
-            #     self._generator.source.bb._dvb.set_standard("DVB")
-            #     self._generator.source.bb._dvb.set_bandwidth(bwidth=enums.WlannTxBw.BW20)
-            #     self._generator.source.bb.dvbt.state.set_value(True)
-            #     self._generator.source.bb.dvbt.standard.set_value( "DVB-T")
-            #     self._generator.source.bb.dvbt.bandwidth.set_value( 8e6)
-            #     self._generator.source.bb.dvbt.modulation.set_value( "64QAM")
-            #     self._generator.source.bb.dvbt.code_rate.set_value( "2/3")
-            #     self._generator.source.bb.dvbt.guard_interval.set_value( "1/16")
 
                 
             log.info(f"[GENERATOR] {self._generator_model} Configured: Frequency = {self._frequency} Hz, Power = {self._transmit_power} dBm, Enabled = {self._transmission_enabled}")
@@ -127,113 +111,3 @@ class GeneratorController(Controller):
 
 
 
-# if ON_WINDOWS:
-#     print('Powiedzmy ze sie udalo')
-# else:
-#     try:
-#         with open("config.json") as config_f:
-#             RsSmw.assert_minimum_version('5.0.44')
-#             config = json.load(config_f)
-#             IP_ADDRESS_GENERATOR = config["IP_ADDRESS_GENERATOR"]
-#             PORT = config["PORT"]
-#             CONNECTION_TYPE = config["CONNECTION_TYPE"]
-#             resource = f'TCPIP::{IP_ADDRESS_GENERATOR}::{PORT}::{CONNECTION_TYPE}'
-#             try:
-#                 print(f"[INFO] Łączenie z generatorem pod adresem: {resource}")
-#                 generator = RsSmw(resource, True, True, "SelectVisa='socket'")
-#                 print("[INFO] Połączono z generatorem.")
-#             except Exception as e:
-#                 print(f"[ERROR] Błąd podczas nawiązywania połączenia: {e}")
-#                 exit()
-#     except FileNotFoundError:
-#         print("Brak pliku konfiguracyjnego. Upewnij się, że istnieje plik config.json.")
-#         exit()
-
-
-# def configure_generator(frequency, gain):
-#     try:
-#         if ON_WINDOWS:
-#             print("[GENERATOR] Skonfigurowany")
-#         else:
-
-#             generator.source.bb.dm.set_state(True)
-#             generator.source.frequency.fixed.set_value(frequency)
-#             generator.source.power.level.immediate.set_amplitude(gain)
-#             generator.output.state.set_value(True) 
-#             print(f"[GENERATOR] Nadawanie sygnału rozpoczęte: Frequency = {frequency} Hz, Gain = {gain} dBm")
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] Nie można skonfigurować generatora: {e}")
-#         raise
-
-# def configure_noise():
-#     try:
-#         if ON_WINDOWS:
-#             print("[GENERATOR] szum")
-#         else:
-#             generator.output.state.set_value(False)  
-#             print("[GENERATOR] Generator ustawiony w trybie szumu.")
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] Nie można ustawić trybu szumu: {e}")
-#         raise
-
-# def stop_generator():
-#     try:
-#         if ON_WINDOWS:
-#             print("[GENERATOR] Generator został wyłączony.")
-#         else:
-#             generator.output.state.set_value(False)
-#             print("[GENERATOR] Generator został wyłączony.")
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] Nie można wyłączyć generatora: {e}")
-#         raise
-
-# def handle_messages():
-#     try:
-#         poller = zmq.Poller()
-#         poller.register(socket_pull, zmq.POLLIN)
-
-#         while True:
-#             events = dict(poller.poll(timeout=100))  # 100 ms timeout
-#             if socket_pull in events:
-#                 message = socket_pull.recv().decode("utf-8")
-#                 data = json.loads(message)
-#                 print(f"[GENERATOR] Otrzymano wiadomość: {data}")
-
-#                 action = data.get("action")
-                
-#                 if action == "now":
-#                     action = data.get("action")
-#                     frequency = data.get("frequency")
-#                     gain = data.get("gain")
-#                     configure_generator(frequency, gain)
-#                     socket_push.send(json.dumps({"component": "generator", "status": "configured"}).encode("utf-8"))
-#                     print("[GENERATOR] Generator pozostaje w stanie nadawania.")
-#                 elif action == "noise":
-#                     configure_noise()
-#                     socket_push.send(json.dumps({"component": "generator", "status": "noise_mode"}).encode("utf-8"))
-
-#                 elif action == "off":
-#                     stop_generator()
-#                     socket_push.send(json.dumps({"component": "generator", "status": "stopped"}).encode("utf-8"))
-
-#                 else:
-#                     print(f"[GENERATOR] Nieznana akcja: {action}")
-
-#     except KeyboardInterrupt:
-#         print("\n[GENERATOR] Zatrzymano program.")
-#         stop_generator()
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] {e}")
-#         stop_generator()
-
-# if __name__ == "__main__":
-#     try:
-#         socket_push.send(json.dumps({"component": "generator", "action": "ready"}).encode("utf-8"))
-#         print("[GENERATOR] Generator gotowy do pracy.")
-#         handle_messages()
-#     except KeyboardInterrupt:
-#         print("\n[GENERATOR] Zatrzymano program.")
-#         stop_generator()
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] {e}")
-#         stop_generator()
