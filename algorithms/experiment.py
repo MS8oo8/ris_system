@@ -24,9 +24,7 @@ class Experiment:
 class ExampleExperiment(Experiment):
 
     def __init__(self):
-        #ustawiamy jedna próbkę 
-        self._power_setup = [-15.0] * 100 # + [-10.0] *10 + [-5.0] * 10 + [0.0] * 10 + [5.0] * 10 + [10]  * 10 + [-15]  *10 
-        #self._power_setup = [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50
+        self._power_setup = Parameters().get().experiment.power_setup
         self._itr = 0
         self._rx_count = Parameters().get().rxes.count
         self._data = np.nan * np.ones((self._rx_count, len(self._power_setup)))

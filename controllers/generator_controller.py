@@ -94,8 +94,9 @@ class GeneratorController(Controller):
 
                 
             log.info(f"[GENERATOR] {self._generator_model} Configured: Frequency = {self._frequency} Hz, Power = {self._transmit_power} dBm, Enabled = {self._transmission_enabled}")
-    
-    def _noise(self):
+ 
+
+    def _configure_noise(self):
         if self._test_mode:
             log.info('(TEST) Generator set to noise mode')
             return
