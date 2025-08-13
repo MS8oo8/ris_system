@@ -9,6 +9,8 @@ import pandas as pd
 from datetime import datetime
 from loguru import logger as log
 import zipfile
+import uhd
+
 
 class GeneratorModel(str, Enum):
     #SMM100A = "SMM100A"
@@ -63,6 +65,13 @@ class RxParams(BaseModel):
     N: int = 1
 
 
+#seriale z PC
+class UsrpParams(BaseModel):
+    serials: List[str] = [
+        '3113F10' #id 0 
+    ]
+
+    
 class RisParams(BaseModel):
     pattern: str = None
     index: int = None
@@ -157,8 +166,8 @@ class Params(BaseModel):
 
     })
     experiment: ExperimentParams = ExperimentParams()
-    algorithm: AlgorithmParams = AlgorithmParams()                                 
-
+    algorithm: AlgorithmParams = AlgorithmParams()
+    usrp: UsrpParams = UsrpParams()                             
 
 
 

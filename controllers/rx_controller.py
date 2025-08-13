@@ -3,7 +3,8 @@ from loguru import logger as log
 # import time
 import json
 # from RsSmw import *
-
+from helpers.parameters import Params
+import uhd
 import numpy as np
 from typing import Dict, Callable, List
 from helpers.zmq_connection import ZmqClient
@@ -18,6 +19,7 @@ class RxController(Controller):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.params = Params()
 
         self._avg_power_history = -100.0 
         self._log_history_coeff = 0.95
@@ -31,11 +33,15 @@ class RxController(Controller):
         if self._test_mode:
             print(f"Symulacja połączenia z USRP")
         else:
+            idx = int(self._component_id)
+            serial = self.params.usrp.serials[idx]
+            self.usrp = uhd.usrp.MultiUSRP(f"serial = {serial}")
             #time.sleep(10)
-            import uhd
-            global usrp
-            if self._component_id == '0':
-                usrp = uhd.usrp.MultiUSRP("serial=3113F10")
+            # import uhd
+            # global usrp
+            # if self._component_id == '0':
+            #     usrp = 
+                #uhd.usrp.MultiUSRP("serial=3113F10")
             #elif self._component_id == '1':
             #	usrp = uhd.usrp.MultiUSRP("serial=3273ACF")
             
