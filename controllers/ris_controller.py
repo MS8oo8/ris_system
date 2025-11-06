@@ -77,6 +77,22 @@ class RisController(Controller):
             self.ser.flushOutput()
             self.id = id
             self.timeout = 10 #timeout
+    
+    def _perform_reinit(self) -> None:
+        
+        if self._test_mode:
+            log.info('(TEST) RIS reinit')
+            return
+        
+        try:
+            if hasattr(self, 'ser') and self.ser:
+                self.ser.flushInput()
+                self.ser.flushOutput()
+                self.ser.write(b"!RESET\n") #???
+                time.sleep(0.1)
+                log.info('[RIS {}] Serial buffers flushed', self._component_id)
+        except Exception as e:
+            log.error('[RIS {}] Reinit error: {}', self._component_id, e)
 
 
     def _on_message_received(self, message: Dict):
@@ -95,6 +111,10 @@ class RisController(Controller):
                     self._send_message({'action': 'pattern-update', 'data': {'status' : 'success'}})
                 else:
                     self._send_message({'action': 'pattern-update', 'data': {'status' : 'failure'}})
+            case 'reinit':
+                log.warning('[RIS {}] REINIT requested', self._component_id)
+                self._perform_reinit()
+                self._send_message({'action' : 'new'})
             case _:
                 log.warning('this action is not defined!')
 

@@ -11,12 +11,12 @@ from algorithms.algorithm import Algorithm
 from algorithms.experiment import Experiment
 
 
-from prometheus_client import Gauge, Info
-g_rx_power = Gauge('rx_power', 'Description of gauge', labelnames=['rx'])
-g_rx_power_by_pattern = Gauge('rx_power_by_pattern', 'Description of gauge', labelnames=['ris_0'])
-g_selected_pattern = Gauge('selected_pattern', 'Description of gauge', labelnames=['ris_0'])
-g_info = Info('selected_pattern_png', 'description', labelnames=['ris_id'])
-g_selected_pattern_index = Gauge('selected_pattern_index', 'description', labelnames=['ris_id'])
+#from prometheus_client import Gauge, Info
+# g_rx_power = Gauge('rx_power', 'Description of gauge', labelnames=['rx'])
+# g_rx_power_by_pattern = Gauge('rx_power_by_pattern', 'Description of gauge', labelnames=['ris_0'])
+# g_selected_pattern = Gauge('selected_pattern', 'Description of gauge', labelnames=['ris_0'])
+# g_info = Info('selected_pattern_png', 'description', labelnames=['ris_id'])
+# g_selected_pattern_index = Gauge('selected_pattern_index', 'description', labelnames=['ris_id'])
 
 class SystemController:
     def __init__(self,
@@ -34,6 +34,9 @@ class SystemController:
             algorithm=algorithm,
             experiment=experiment
         )
+        self._generator_id: str | None = None
+        self._ris_ids: str[str] = set()
+        self._rx_ids: str[str] = set()
 
     def run(self) -> None:
         while not self._system_logic.finished():
@@ -99,10 +102,15 @@ class SystemController:
             log.warning('no handler defined for this component!')
 
     def _handle_generator_message_received(self, message: Dict):
+
+        if 'id' in message and message['id'] is not None:
+            self._generator_id = str(message['id'])
+
         match message['action']:
             case 'new':
+                uid = message.get('_id')
                 message['action'] = 'new-ack'
-                message['data'] = self._system_logic.generator.received_new(device_id=message['id'], unique_id=message['_id'])
+                message['data'] = self._system_logic.generator.received_new(device_id=message['id'], unique_id=uid)
                 self._send_message(message)
             case 'ready':
                 self._system_logic.generator.received_ready(device_id=message['id'])
@@ -114,10 +122,14 @@ class SystemController:
                 log.warning('no handler defined for this action!')
  
     def _handle_ris_message_received(self, message: Dict): 
+        if 'id' in message and message['id'] is not None:
+            self._ris_ids.add(str(message['id'])) 
+            
         match message['action']:
             case 'new':
+                uid = message.get('_id')
                 message['action'] = 'new-ack'
-                message['data'] = self._system_logic.rises.received_new(device_id=message['id'], unique_id=message['_id'])
+                message['data'] = self._system_logic.rises.received_new(device_id=message['id'], unique_id=uid)
                 self._send_message(message)
             case 'ready':
                 self._system_logic.rises.received_ready(device_id=message['id'])
@@ -128,11 +140,51 @@ class SystemController:
             case _:
                 log.warning('no handler defined for this action!')
 
+
+            
+    def _broadcast_reinit(self) -> None:
+        log.warning("Broadcast reinit to all known components")
+
+        gen_id = self._generator_id
+        log.warning("Broadcast REINIT -> generator id= {} ", gen_id)
+        self._send_message({
+            'component' : 'generator',
+            'id' : gen_id,
+            'action' : 'reinit'
+        })
+        
+        if self._ris_ids:
+            for rid in sorted(self._ris_ids):
+                log.warning("Broadcast REINIT -> RIS id = {}", rid)
+                self._send_message({
+                    'component' : 'ris',
+                    'id' : rid,
+                    'action' : 'reinit'
+                })
+        else:
+            try:
+                for rid in Parameters().get().rises.keys():
+                    log.warning("Broadcast REINIT (fallback) -> RIS id = {}", rid)
+                    self._send_message({
+                        'component' : 'ris',
+                        'id': str(rid),
+                        'action' : 'reinit'
+                    })
+            except Exception:
+                log.warning("No RIS ids known to broadcast reinit")
+                
+
     def _handle_rx_message_received(self, message: Dict):
+        
+        if 'id' in message and message['id'] is not None:
+            self._rx_ids.add(str(message['id']))
+
+
         match message['action']:
             case 'new':
+                uid = message.get('_id')
                 message['action'] = 'new-ack'
-                message['data'] = self._system_logic.rxes.received_new(device_id=message['id'], unique_id=message['_id'])
+                message['data'] = self._system_logic.rxes.received_new(device_id=message['id'], unique_id=uid)
                 self._send_message(message)
             case 'ready':
                 self._system_logic.rxes.received_ready(device_id=message['id'])
@@ -141,24 +193,49 @@ class SystemController:
                 self._system_logic.rxes.received_ready(device_id=message['id'])
                 self._system_logic.receive_measurement_results(device_id=message['id'], results=message['data'])
 
-                # display prometheus
-                value_rx_power = float(np.mean(message['data']))
-                ris_0_pattern = Parameters().get().rises['0'].index
-                # ris_1_pattern = Parameters().get().rises['1'].index
-                selected = self._system_logic._algorithm.selected_config
+                # # display prometheus
+                # value_rx_power = float(np.mean(message['data']))
+                # ris_0_pattern = Parameters().get().rises['0'].index
+                # # ris_1_pattern = Parameters().get().rises['1'].index
+                # selected = self._system_logic._algorithm.selected_config
 
-                g_rx_power.labels(rx=0).set(value_rx_power)
+                # g_rx_power.labels(rx=0).set(value_rx_power)
                 
-                g_rx_power_by_pattern.labels(ris_0=str(ris_0_pattern).zfill(2)).set(value_rx_power)
+                # g_rx_power_by_pattern.labels(ris_0=str(ris_0_pattern).zfill(2)).set(value_rx_power)
 
-                for i in range(len(self._system_logic._algorithm.configs)):
-                    g_selected_pattern.labels(ris_0=str(i).zfill(2)).set(0)
-                if selected is not None and selected == ris_0_pattern:
-                    g_selected_pattern.labels(ris_0=str(ris_0_pattern).zfill(2)).set(1)
-                    g_info.labels(ris_id=0).info({'path': f'{str(ris_0_pattern).zfill(2)}.png' })
-                    g_selected_pattern_index.labels(ris_id=0).set(ris_0_pattern)
-                # end of display
+                # for i in range(len(self._system_logic._algorithm.configs)):
+                #     g_selected_pattern.labels(ris_0=str(i).zfill(2)).set(0)
+                # if selected is not None and selected == ris_0_pattern:
+                #     g_selected_pattern.labels(ris_0=str(ris_0_pattern).zfill(2)).set(1)
+                #     g_info.labels(ris_id=0).info({'path': f'{str(ris_0_pattern).zfill(2)}.png' })
+                #     g_selected_pattern_index.labels(ris_id=0).set(ris_0_pattern)
+                # # end of display
 
                 log.debug('RX {} measured: {}', message['id'], message['data'])
+            case "component-reinit":
+                log.debug('RX {} requested reinit (reason={}, need_config={})',
+                      message['id'], message.get('reason'), message.get('need_config'))
+                self._broadcast_reinit()
+                
+                if message.get('need_config'):
+                    cfg = self._system_logic.rxes.received_new(
+                        device_id=message['id'],
+                        unique_id=message.get('_id') #?
+                    )
+                    
+                    log.warning('Sending fresh RX config to id = {} after reinit', message['id'])
+                    self._send_message({
+                        'component' : 'rx',
+                        'id' : message['id'],
+                        'action' : 'configure',
+                        'data' : cfg
+                    })
+                
+                
             case _:
                 log.warning('no handler defined for this action!')
+        
+
+
+
+

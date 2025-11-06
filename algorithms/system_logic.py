@@ -31,7 +31,8 @@ class GeneratorHandler(DeviceHandler):
         return self._ready
 
     def received_new(self, device_id, unique_id) -> Dict | None:
-        assert self._id is None
+        #print(self._id)
+        #assert self._id is None
 
         self._id = device_id
         self._config = {
@@ -129,14 +130,10 @@ class SystemLogic:
             self._measurment_queued = False
             self.rxes.wait()
             return True
-
-
+        
     def generate_configuration_change_requests(self) -> Tuple[GeneratorParams | None, Dict[str, RisParams] | None]:
-
         if not self.ready() or self._measurment_queued:
-            #log.info(f'Check: ready = {self.ready()}, queued={self._measurment_queued} ')
             return (None, None)
-
 
 
         if not self._algorithm.data_collection_finished():
@@ -149,10 +146,8 @@ class SystemLogic:
             return request
 
         if self._data_collection_phase:
-            log.info('Finished data collection phase. Starting experiment phase.') 
+            log.info('Starting experiment phase.') 
             self._data_collection_phase = False
-
-
 
         if not self._experiment.finished():
             request_generator = self._experiment.generate_generator_params()
@@ -162,30 +157,72 @@ class SystemLogic:
             self._measurment_queued = True
             return request_generator, request_rises
 
-
-        if self._experiment.finished():
-            log.info('Experiment finished. Restart algorithm.')
-            self._algorithm.reset()
-            self._experiment.reset()
-            self._data_collection_phase = True
-            request = self._algorithm.data_collection_request()
-
-            self.generator.wait()
-            self.rises.wait()
-            self._measurment_queued = True
-
-            return request
-            log.info(f'Reset algorithm data to nan: \n{self._algorithm.data}')
-
-
         return (None, None)  # FINISHED
-
- 
 
     def receive_measurement_results(self, device_id: str, results: Dict) -> None:
         if self._data_collection_phase:
             self._algorithm.store_results(device_id, results)
-            log.debug("Got algorithm measurement from {}: {}", device_id, results)
+            log.info("Got algorithm measurement from {}: {}", device_id, results)
         else:
             self._experiment.store_results(device_id, results)
-            log.debug("Got experiment measurement from {}: {}", device_id, results)
+            log.info("Got experiment measurement from {}: {}", device_id, results)
+
+
+    # def generate_configuration_change_requests(self) -> Tuple[GeneratorParams | None, Dict[str, RisParams] | None]:
+
+    #     if not self.ready() or self._measurment_queued:
+    #         #log.info(f'Check: ready = {self.ready()}, queued={self._measurment_queued} ')
+    #         return (None, None)
+
+
+
+    #     if not self._algorithm.data_collection_finished():
+    #         request = self._algorithm.data_collection_request()
+
+    #         self.generator.wait()
+    #         self.rises.wait()
+    #         self._measurment_queued = True
+
+    #         return request
+
+    #     if self._data_collection_phase:
+    #         log.info('Finished data collection phase. Starting experiment phase.') 
+    #         self._data_collection_phase = False
+
+
+
+    #     if not self._experiment.finished():
+    #         request_generator = self._experiment.generate_generator_params()
+    #         self.generator.wait()
+    #         request_rises = self._algorithm.algorithm_step()
+    #         self.rises.wait()
+    #         self._measurment_queued = True
+    #         return request_generator, request_rises
+
+
+    #     if self._experiment.finished():
+    #         log.info('Experiment finished. Restart algorithm.')
+    #         self._algorithm.reset()
+    #         self._experiment.reset()
+    #         self._data_collection_phase = True
+    #         request = self._algorithm.data_collection_request()
+
+    #         self.generator.wait()
+    #         self.rises.wait()
+    #         self._measurment_queued = True
+
+    #         return request
+    #         log.info(f'Reset algorithm data to nan: \n{self._algorithm.data}')
+
+
+    #     return (None, None)  # FINISHED
+
+ 
+
+    # def receive_measurement_results(self, device_id: str, results: Dict) -> None:
+    #     if self._data_collection_phase:
+    #         self._algorithm.store_results(device_id, results)
+    #         log.debug("Got algorithm measurement from {}: {}", device_id, results)
+    #     else:
+    #         self._experiment.store_results(device_id, results)
+    #         log.debug("Got experiment measurement from {}: {}", device_id, results)

@@ -36,10 +36,10 @@ class GeneratorController(Controller):
         if not self._test_mode:
             try:
                 resource = f'TCPIP::{self._ip_address}::{self._port}::{self._connection_type}'
-                if self._generator_model == GeneratorModel.SMM100A:
-                    from RsSmw import RsSmw
-                    self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
-                elif self._generator_model == GeneratorModel.SMBV100A:
+                if self._generator_model == "SMM100A":
+                     from RsSmw import RsSmw
+                     self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
+                if self._generator_model == "SMBV100A":
                     from RsSmbv import RsSmbv 
                     self._generator = RsSmbv(resource, True, False, "SelectVisa='socket'")
                 
@@ -47,6 +47,19 @@ class GeneratorController(Controller):
             except Exception as e:
                 log.error(f"[ERROR] Error connecting to generator: {e}")
                 exit()
+
+    def _perform_reinit(self) -> None:
+        try:
+            if not self._test_mode:
+                self._generator.output.state.set_value(False)
+                log.info("[GENERATOR] RF off")
+        except Exception as e:
+            log.error(f"[GENERATOR] RF disable faild during reinit because: {e}")
+        try:
+            self._transmission_enabled = False
+        except Exception:
+            pass
+
 
     def _on_message_received(self, message: Dict):
         match message['action']:
@@ -61,6 +74,11 @@ class GeneratorController(Controller):
             case 'noise':
                 self._configure_noise()
                 self._send_message({'action': 'noise-ack'})
+            case 'reinit':
+                log.warning("[GENERATOR] REINIT requested")
+                self._perform_reinit()
+                self._send_message({'action' : 'new'})
+
             case _:
                 log.warning('this action is not defined!')
 
@@ -83,12 +101,12 @@ class GeneratorController(Controller):
             self._transmission_enabled = config['transmission_enabled']
         
         if not self._test_mode and self._generator:
-            if self._generator_model == GeneratorModel.SMM100A:
+            if self._generator_model == "SMM100A":
                 #self._generator.source.bb.dm.set_state(True)
                 self._generator.source.frequency.fixed.set_value(self._frequency)
                 self._generator.source.power.level.immediate.set_amplitude(self._transmit_power)
                 self._generator.output.state.set_value(self._transmission_enabled) 
-            elif self._generator_model == GeneratorModel.SMBV100A:
+            elif self._generator_model == "SMBV100A":
                 self._generator.source.frequency.fixed.set_value(self._frequency)
                 self._generator.source.power.level.immediate.set_amplitude(self._transmit_power)
                 self._generator.output.state.set_value(self._transmission_enabled)
@@ -127,113 +145,3 @@ class GeneratorController(Controller):
 
 
 
-# if ON_WINDOWS:
-#     print('Powiedzmy ze sie udalo')
-# else:
-#     try:
-#         with open("config.json") as config_f:
-#             RsSmw.assert_minimum_version('5.0.44')
-#             config = json.load(config_f)
-#             IP_ADDRESS_GENERATOR = config["IP_ADDRESS_GENERATOR"]
-#             PORT = config["PORT"]
-#             CONNECTION_TYPE = config["CONNECTION_TYPE"]
-#             resource = f'TCPIP::{IP_ADDRESS_GENERATOR}::{PORT}::{CONNECTION_TYPE}'
-#             try:
-#                 print(f"[INFO] Łączenie z generatorem pod adresem: {resource}")
-#                 generator = RsSmw(resource, True, True, "SelectVisa='socket'")
-#                 print("[INFO] Połączono z generatorem.")
-#             except Exception as e:
-#                 print(f"[ERROR] Błąd podczas nawiązywania połączenia: {e}")
-#                 exit()
-#     except FileNotFoundError:
-#         print("Brak pliku konfiguracyjnego. Upewnij się, że istnieje plik config.json.")
-#         exit()
-
-
-# def configure_generator(frequency, gain):
-#     try:
-#         if ON_WINDOWS:
-#             print("[GENERATOR] Skonfigurowany")
-#         else:
-
-#             generator.source.bb.dm.set_state(True)
-#             generator.source.frequency.fixed.set_value(frequency)
-#             generator.source.power.level.immediate.set_amplitude(gain)
-#             generator.output.state.set_value(True) 
-#             print(f"[GENERATOR] Nadawanie sygnału rozpoczęte: Frequency = {frequency} Hz, Gain = {gain} dBm")
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] Nie można skonfigurować generatora: {e}")
-#         raise
-
-# def configure_noise():
-#     try:
-#         if ON_WINDOWS:
-#             print("[GENERATOR] szum")
-#         else:
-#             generator.output.state.set_value(False)  
-#             print("[GENERATOR] Generator ustawiony w trybie szumu.")
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] Nie można ustawić trybu szumu: {e}")
-#         raise
-
-# def stop_generator():
-#     try:
-#         if ON_WINDOWS:
-#             print("[GENERATOR] Generator został wyłączony.")
-#         else:
-#             generator.output.state.set_value(False)
-#             print("[GENERATOR] Generator został wyłączony.")
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] Nie można wyłączyć generatora: {e}")
-#         raise
-
-# def handle_messages():
-#     try:
-#         poller = zmq.Poller()
-#         poller.register(socket_pull, zmq.POLLIN)
-
-#         while True:
-#             events = dict(poller.poll(timeout=100))  # 100 ms timeout
-#             if socket_pull in events:
-#                 message = socket_pull.recv().decode("utf-8")
-#                 data = json.loads(message)
-#                 print(f"[GENERATOR] Otrzymano wiadomość: {data}")
-
-#                 action = data.get("action")
-                
-#                 if action == "now":
-#                     action = data.get("action")
-#                     frequency = data.get("frequency")
-#                     gain = data.get("gain")
-#                     configure_generator(frequency, gain)
-#                     socket_push.send(json.dumps({"component": "generator", "status": "configured"}).encode("utf-8"))
-#                     print("[GENERATOR] Generator pozostaje w stanie nadawania.")
-#                 elif action == "noise":
-#                     configure_noise()
-#                     socket_push.send(json.dumps({"component": "generator", "status": "noise_mode"}).encode("utf-8"))
-
-#                 elif action == "off":
-#                     stop_generator()
-#                     socket_push.send(json.dumps({"component": "generator", "status": "stopped"}).encode("utf-8"))
-
-#                 else:
-#                     print(f"[GENERATOR] Nieznana akcja: {action}")
-
-#     except KeyboardInterrupt:
-#         print("\n[GENERATOR] Zatrzymano program.")
-#         stop_generator()
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] {e}")
-#         stop_generator()
-
-# if __name__ == "__main__":
-#     try:
-#         socket_push.send(json.dumps({"component": "generator", "action": "ready"}).encode("utf-8"))
-#         print("[GENERATOR] Generator gotowy do pracy.")
-#         handle_messages()
-#     except KeyboardInterrupt:
-#         print("\n[GENERATOR] Zatrzymano program.")
-#         stop_generator()
-#     except Exception as e:
-#         print(f"[GENERATOR ERROR] {e}")
-#         stop_generator()

@@ -6,20 +6,21 @@ from controllers.rx_controller import RxController
 from controllers.ris_controller import RisController
 from algorithms.algorithm import ExampleAlgorithm
 from algorithms.experiment import ExampleExperiment
-from prometheus_client import start_http_server
+#from prometheus_client import start_http_server
 
-SYSTEM_CONTROLLER_ADDRESS = 'localhost' #'192.168.8.219' #
+SYSTEM_CONTROLLER_ADDRESS ='localhost' #'192.168.8.219' #'192.168.8.219' #localhost
 PORT_PUB_SUB = 5558
 PORT_PUSH_PULL = 5559
 TEST_MODE = True
 
 log.remove()
-log.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss.SSS}</green> | {message}", colorize=True) 
+log.add(sys.stderr, level="DEBUG") 
+#log.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss.SSS}</green> | {message}", colorize=True) 
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         log.info('Starting SystemController')
-        start_http_server(8000)
+        #start_http_server(8000)
         controller = SystemController(
             port_pub=PORT_PUB_SUB,
             port_pull=PORT_PUSH_PULL,
@@ -31,7 +32,7 @@ if __name__ == '__main__':
         cmd = str(sys.argv[1])
         match cmd:
             case "generator":
-                TEST_MODE = True
+                #TEST_MODE = True
                 log.info('Starting GeneratorController')
                 controller = GeneratorController(
                     component_name='generator',

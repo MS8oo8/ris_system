@@ -35,7 +35,7 @@ class ExampleAlgorithm(Algorithm):
         super().__init__()
 
         self.all_patterns = {
-                       0: "0x8000800080008000800080008000800080008000800080008000800080008000",
+            0: "0x8000800080008000800080008000800080008000800080008000800080008000",
             1: "0x4000400040004000400040004000400040004000400040004000400040004000",
             2: "0x2000200020002000200020002000200020002000200020002000200020002000",
             3: "0x1000100010001000100010001000100010001000100010001000100010001000",
@@ -71,7 +71,6 @@ class ExampleAlgorithm(Algorithm):
         } #patterny same paskki pojedyncze - pojedyncze o roznej długosci - bez przeprlatych (do 4 grubosci)
         self.signal_power = [10.0] #5.0, 10.0
 
-        # TO JEST TYLKO DLA OPCJI Z DWOMA RISAMI - nie mozna tego uzywac dla jednego...
         if self._ris_count == 1:
             self.configs = np.array(list(self.all_patterns.keys()))
         elif self._ris_count == 2:
@@ -95,7 +94,6 @@ class ExampleAlgorithm(Algorithm):
 
     def data_collection_finished(self):
         return not np.isnan(self.data).any()
-        print(f'[DATA CHECK] data_collectiuon_finished: {finished}, has NaNs: {np.isnan(self.data).sum()}')
 
     def data_collection_request(self) -> Tuple[GeneratorParams, Dict[str, RisParams]] | None:
         if self.waiting_for > 0: #bylo >
@@ -127,37 +125,31 @@ class ExampleAlgorithm(Algorithm):
         self.waiting_for = self._rx_count
         return generator_params, ris_params
 
-    # def store_results(self, device_id: str, results) -> None:
-    #     self.waiting_for -= 1
-    #     self.data[int(device_id), self.config_itr, self.signal_power_itr] = np.mean(results)
-
-    #     if self.waiting_for == 0:
-    #         if self.data_collection_finished():
-    #             Parameters().save_algorithm_results_to_csv(self.data, self.configs, self.signal_power)
-    #         self._next_data_collection_iteration()
 
     def store_results(self, device_id: str, results) -> None:
         rx_id = int(device_id)
         power = self.signal_power[self.signal_power_itr]
         config = self.configs[self.config_itr]
+        config = np.atleast_1d(config)
         mean_result = float(np.mean(results))
 
+
         # # dopisz dane do pliku CSV
-        # timestamp = datetime.now().strftime("%Y%m%d")
-        # results_dir = "results"
-        # os.makedirs(results_dir, exist_ok=True)
-        # filename = os.path.join(results_dir, f"live_algorithm_rx_{rx_id}_{timestamp}.csv")
+        timestamp = datetime.now().strftime("%Y%m%d")
+        results_dir = "results"
+        os.makedirs(results_dir, exist_ok=True)
+        filename = os.path.join(results_dir, f"live_algorithm_rx_{rx_id}_{timestamp}.csv")
 
-        # row = {
-        #     "Timestamp": datetime.now().isoformat(),
-        #     "Power": "Noise" if power is None else power,
-        #     "Result": mean_result
-        # }
-        # for ris_idx, pattern_id in enumerate(config):
-        #     row[f"PatternRIS{ris_idx}"] = pattern_id
+        row = {
+            "Timestamp": datetime.now().isoformat(),
+            "Power": "Noise" if power is None else power,
+            "Result": mean_result
+        }
+        for ris_idx, pattern_id in enumerate(config):
+            row[f"PatternRIS{ris_idx}"] = pattern_id
 
-        # df = pd.DataFrame([row])
-        # df.to_csv(filename, mode='a', header=not os.path.exists(filename), index=False)
+        df = pd.DataFrame([row])
+        df.to_csv(filename, mode='a', header=not os.path.exists(filename), index=False)
 
         # # nadal aktualizuj strukturę w pamięci, jeśli potrzebna
         self.data[rx_id, self.config_itr, self.signal_power_itr] = mean_result

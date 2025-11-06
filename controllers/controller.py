@@ -2,7 +2,7 @@ from time import time
 from loguru import logger as log
 from helpers.zmq_connection import ZmqClient
 from typing import Dict
-
+import uuid
 
 class Controller:
     def __init__(self,
@@ -57,8 +57,11 @@ class Controller:
         self._on_message_received(message)
 
     def _send_message(self, message: Dict) -> None:
+        message['_id'] = str(self._id)
         message['component'] = self._component_name
-        message['id'] = self._component_id
+        message['id'] = self._component_id #str(uuid.uuid4())
+
         self._connection.send_message(message)
+        print(message)
         log.debug('Component {} send: {}', self._component_name, message)
 
