@@ -1,6 +1,7 @@
 from time import time
 from loguru import logger as log
 from helpers.zmq_connection import ZmqClient
+from helpers.exceptions import RestartRequired
 from typing import Dict
 import uuid
 
@@ -44,6 +45,10 @@ class Controller:
                 log.debug('Component {} connected', self._component_name)
             else:
                 log.warning('Component {} NOT connected', self._component_name)
+
+        if message['action'] == 'restart':
+            log.warning('Component {} restarting as requested', self._component_name)
+            raise RestartRequired
 
         # FILTER messages from system controller
         if message['component'] != self._component_name:

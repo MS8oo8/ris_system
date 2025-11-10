@@ -223,6 +223,8 @@ class RxController(Controller):
             self._avg_power_history += pow(10.0, result / 10.0) * (1.0 - self._log_history_coeff)
             self._avg_power_history = 10.0 * np.log10(self._avg_power_history)
             log.info(f"Avg: {self._avg_power_history:.2f} dBm; Current: {result:.2f} dBm")
+            if np.random.rand() < 0.1:
+                raise ValueError("Simulated measurement error")
             return [result] #symulation
         
         power_measurements = []

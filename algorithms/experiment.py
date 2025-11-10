@@ -24,9 +24,7 @@ class Experiment:
 class ExampleExperiment(Experiment):
 
     def __init__(self):
-        #ustawiamy jedna próbkę 
-        self._power_setup = [-15.0] * 1 # + [-10.0] *10 + [-5.0] * 10 + [0.0] * 10 + [5.0] * 10 + [10]  * 10 + [-15]  *10 
-        #self._power_setup = [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50
+        self._power_setup = [-15.0] 
         self._itr = 0
         self._rx_count = Parameters().get().rxes.count
         self._data = np.nan * np.ones((self._rx_count, len(self._power_setup)))
@@ -56,17 +54,6 @@ class ExampleExperiment(Experiment):
         self._waiting_for = self._rx_count
 
         return params
-
-    # def store_results(self, device_id: str, results) -> None:
-    #     self._waiting_for -= 1
-    #     self._data[int(device_id), self._itr] = np.mean(results)
-
-    #     if self._waiting_for == 0:
-    #         self._itr += 1
-            
-    #         if self.finished():
-    #             Parameters().save_experyment_result_csv(self._data)
-
 
     def store_results(self, device_id: str, results) -> None:
         rx_id = int(device_id)

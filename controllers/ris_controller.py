@@ -11,36 +11,7 @@ from unittest.mock import Mock
 from helpers.parameters import Parameters
 import time
 import os
-#if self._test_mode:
-    #from serial import Serial
-#else:
-#Serial = Mock()
 
-    
-
-# class MockSerial:
-#     """Symulowany port szeregowy dla RIS."""
-#     def __init__(self, port, baudrate=115200, timeout=10):
-#         self.port = port
-#         self.baudrate = baudrate
-#         self.timeout = timeout
-#         self.buffer = []
-#         log.info(f"[MockSerial] Połączono z symulowanym portem {port}.")
-
-#     def flushInput(self):
-#         self.buffer = []
-
-#     def flushOutput(self):
-#         pass
-
-#     def write(self, data):
-#         log.info(f"[MockSerial] Odebrano dane do wysłania: {data}")
-#         self.buffer.append(data)
-
-#     def readline(self):
-#         if self.buffer:
-#             return b"#OK\n"  # Symulacja odpowiedzi #OK
-#         return b""  # Brak odpowiedzi
 
 class RisController(Controller):
 
@@ -64,12 +35,6 @@ class RisController(Controller):
         
         log.info("RIS {} use port {}", self._component_id, port)
 
-
-        # if self._test_mode:
-        #     self.ser = Serial(port, baudrate=115200, timeout=10)
-        # else:
-        # print("!!!!!!!!!!!!!!!!!!")
-        # print(port)
         if not self._test_mode:
             from serial import Serial
             self.ser = Serial(port, baudrate=115200, timeout=10)

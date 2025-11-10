@@ -96,12 +96,8 @@ class ExampleAlgorithm(Algorithm):
         return not np.isnan(self.data).any()
 
     def data_collection_request(self) -> Tuple[GeneratorParams, Dict[str, RisParams]] | None:
-        if self.waiting_for > 0: #bylo >
+        if self.waiting_for > 0: 
             return None
-
-        # log.debug('Algorithm requesting data for power {} {}/{}, config {} {}/{}', 
-        #         self.signal_power[self.signal_power_itr], self.signal_power_itr + 1, len(self.signal_power),
-        #         self.configs[self.config_itr, :], self.config_itr + 1, self.configs.shape[0])
 
         generator_params = deepcopy(Parameters().get().generator)
         if self.signal_power[self.signal_power_itr] is None:

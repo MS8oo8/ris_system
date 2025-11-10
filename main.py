@@ -1,5 +1,6 @@
 import sys
 from loguru import logger as log
+from helpers.exceptions import RestartRequired
 from controllers.system_controller import SystemController
 from controllers.generator_controller import GeneratorController
 from controllers.rx_controller import RxController
@@ -27,47 +28,56 @@ if __name__ == '__main__':
             algorithm=ExampleAlgorithm(),
             experiment=ExampleExperiment()
         )
-        controller.run()
+        try:
+            controller.run()
+        except KeyboardInterrupt:
+            controller._send_finish_message()
+
     elif 2 <= len(sys.argv) <= 3:
         cmd = str(sys.argv[1])
-        match cmd:
-            case "generator":
-                #TEST_MODE = True
-                log.info('Starting GeneratorController')
-                controller = GeneratorController(
-                    component_name='generator',
-                    component_id='0',
-                    controller_address=SYSTEM_CONTROLLER_ADDRESS,
-                    port_sub=PORT_PUB_SUB,
-                    port_push=PORT_PUSH_PULL,
-                    test_mode=TEST_MODE
-                )
-                controller.run()
-            case "rx":
-                assert len(sys.argv) == 3
-                log.info('Starting RxController')
-                controller = RxController(
-                    component_name='rx',
-                    component_id=sys.argv[2],
-                    controller_address=SYSTEM_CONTROLLER_ADDRESS,
-                    port_sub=PORT_PUB_SUB,
-                    port_push=PORT_PUSH_PULL,
-                    test_mode=TEST_MODE
-                )
-                controller.run()
-            case "ris":
+
+        while True:
+            try:
+                match cmd:
+                    case "generator":
+                        log.info('Starting GeneratorController')
+                        controller = GeneratorController(
+                            component_name='generator',
+                            component_id='0',
+                            controller_address=SYSTEM_CONTROLLER_ADDRESS,
+                            port_sub=PORT_PUB_SUB,
+                            port_push=PORT_PUSH_PULL,
+                            test_mode=TEST_MODE
+                        )
+                        controller.run()
+                    case "rx":
+                        assert len(sys.argv) == 3
+                        log.info('Starting RxController')
+                        controller = RxController(
+                            component_name='rx',
+                            component_id=sys.argv[2],
+                            controller_address=SYSTEM_CONTROLLER_ADDRESS,
+                            port_sub=PORT_PUB_SUB,
+                            port_push=PORT_PUSH_PULL,
+                            test_mode=TEST_MODE
+                        )
+                        controller.run()
+                    case "ris":
+                        assert len(sys.argv) == 3
+                        log.info('Starting RisController')
+                        controller = RisController(
+                            component_name='ris',
+                            component_id=sys.argv[2],
+                            controller_address=SYSTEM_CONTROLLER_ADDRESS,
+                            port_sub=PORT_PUB_SUB,
+                            port_push=PORT_PUSH_PULL,
+                            test_mode=TEST_MODE
+                        )
+                        controller.run()
+            except RestartRequired:
+                log.info('Restarting {} controller', cmd)
                 import time
-                # time.sleep(10)
-                assert len(sys.argv) == 3
-                log.info('Starting RisController')
-                controller = RisController(
-                    component_name='ris',
-                    component_id=sys.argv[2],
-                    controller_address=SYSTEM_CONTROLLER_ADDRESS,
-                    port_sub=PORT_PUB_SUB,
-                    port_push=PORT_PUSH_PULL,
-                    test_mode=TEST_MODE
-                )
-                controller.run()
+                time.sleep(3)
+                continue
     else:
         log.error('Unknown starting command')
