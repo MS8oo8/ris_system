@@ -78,6 +78,8 @@ class GeneratorController(Controller):
                 log.warning("[GENERATOR] REINIT requested")
                 self._perform_reinit()
                 self._send_message({'action' : 'new'})
+            case 'done':
+                log.warning("[GENERATOR] Finish")
 
             case _:
                 log.warning('this action is not defined!')
@@ -102,7 +104,6 @@ class GeneratorController(Controller):
         
         if not self._test_mode and self._generator:
             if self._generator_model == "SMM100A":
-                #self._generator.source.bb.dm.set_state(True)
                 self._generator.source.frequency.fixed.set_value(self._frequency)
                 self._generator.source.power.level.immediate.set_amplitude(self._transmit_power)
                 self._generator.output.state.set_value(self._transmission_enabled) 
@@ -110,21 +111,6 @@ class GeneratorController(Controller):
                 self._generator.source.frequency.fixed.set_value(self._frequency)
                 self._generator.source.power.level.immediate.set_amplitude(self._transmit_power)
                 self._generator.output.state.set_value(self._transmission_enabled)
-                #self._generator.output.state.set_value(True) 
-            
-            # if self._mode == "wlan": # tu ustawia 
-            #     #self._generator.source.bb.wlnn.set_value(True)
-            #     self._generator.source.bb.wlnn.waveform.set_create("IEEE80211a")
-            #     self._generator.source.bb.wlnn.set_bandwidth(bwidth=enums.WlannTxBw.BW20)
-            # elif self._mode == 'dvbt': #jeszcze nie testowane
-            #     self._generator.source.bb._dvb.set_standard("DVB")
-            #     self._generator.source.bb._dvb.set_bandwidth(bwidth=enums.WlannTxBw.BW20)
-            #     self._generator.source.bb.dvbt.state.set_value(True)
-            #     self._generator.source.bb.dvbt.standard.set_value( "DVB-T")
-            #     self._generator.source.bb.dvbt.bandwidth.set_value( 8e6)
-            #     self._generator.source.bb.dvbt.modulation.set_value( "64QAM")
-            #     self._generator.source.bb.dvbt.code_rate.set_value( "2/3")
-            #     self._generator.source.bb.dvbt.guard_interval.set_value( "1/16")
 
                 
             log.info(f"[GENERATOR] {self._generator_model} Configured: Frequency = {self._frequency} Hz, Power = {self._transmit_power} dBm, Enabled = {self._transmission_enabled}")

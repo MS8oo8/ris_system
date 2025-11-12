@@ -26,8 +26,6 @@ class RxController(Controller):
             try:
                 out = subprocess.check_output(["uhd_find_devices"], text=True)
                 serials = re.findall(r"serial=(\w+)", out)
-                #print("Znaleziono seriale: ", serials)
-                #print(out)
 
             except Exception:
                 pass
@@ -36,19 +34,23 @@ class RxController(Controller):
         
     def _init_usrp_from_params(self) -> bool:
         global usrp
-        try:
-            import uhd
-            params = Params()
-            usrp_args = params.get_usrp_args(self._component_id)
-            usrp = uhd.usrp.MultiUSRP(usrp_args)
-            self._usrp_usb_sn = params.usrp.serial_map.get(self._component_id)
-            log.info("USRP zainicjalizowany ponownie.")
+        if self._test_mode:
+            print(f"Symulacja połączenia z USRP")
             return True
-        except Exception as e:
-            self._list_available_usrp_serials()
-            log.error(f"Ponowna inicjalizacja USRP nieudana: {e}")
-            usrp = None
-            return False
+        else:
+            try:
+                import uhd
+                params = Params()
+                usrp_args = params.get_usrp_args(self._component_id)
+                usrp = uhd.usrp.MultiUSRP(usrp_args)
+                self._usrp_usb_sn = params.usrp.serial_map.get(self._component_id)
+                log.info("USRP zainicjalizowany ponownie.")
+                return True
+            except Exception as e:
+                self._list_available_usrp_serials()
+                log.error(f"Ponowna inicjalizacja USRP nieudana: {e}")
+                usrp = None
+                return False
     
     def _notify_reinit(self, reason: str) -> None:
         payload = {
@@ -181,6 +183,20 @@ class RxController(Controller):
                 # reason = "LIBUSB_TRANSFER_OVERFLOW"
                 # self._notify_reinit(reason)
                 # time.sleep(50)
+            case 'reinit':
+                log.warning('[RX {}] REINIT requested', self._component_id)
+                try:
+                    ok = self._init_usrp_from_params()
+                    if ok:
+                        log.success("[RX {}] USRP reinitialized successfully.", self._component_id)
+                        self._notify_reinit("manual-reinit")
+                    else:
+                        log.error("[RX {}] Reinit failed - USRP not reinitialized", self._component_id)
+                except Exception as e:
+                    log.exception(f'[RX {self._component_id}] Reinit excepation: {e}')
+            case 'done':
+                log.warning("[RX] Finish")
+
             case _:
                 log.warning('this action is not defined!')
 
@@ -204,16 +220,13 @@ class RxController(Controller):
         if 'buffer_size' in config:
             self._buffer_size = config['buffer_size']
             
-        if 'N' in config: #gdzie w innym miejscu N zalezna jest od tego inijka 78
+        if 'N' in config: 
             self._N = config['N']
         
         if self._test_mode ==  False:
-        #     #configure usrp
-            # self.usrp.set_rx_rate(self._samp_rate)
-            # self.usrp.set_rx_freq(self._frequency,1)
-            # self.usrp.set_rx_gain(self._rx_gain,1)
+
             log.info(f"RX Configured: Frequency = {self._frequency} Hz, Gain = {self._rx_gain} dB, sample rate = {self._samp_rate} S/s")
-            #time.sleep(10)
+ 
 
 
     def _measure(self, config: Dict) -> List[float]:
@@ -224,7 +237,7 @@ class RxController(Controller):
             self._avg_power_history = 10.0 * np.log10(self._avg_power_history)
             log.info(f"Avg: {self._avg_power_history:.2f} dBm; Current: {result:.2f} dBm")
             return [result] #symulation
-        
+            
         power_measurements = []
         while len(power_measurements) < self._N:
             #print(self._buffer_size, self._frequency, self._samp_rate, self._rx_gain)
