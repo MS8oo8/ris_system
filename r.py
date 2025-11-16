@@ -1,11 +1,8 @@
 import zmq
 from loguru import logger as log
-# import time
 import json
-# from RsSmw import *
 import re
 import subprocess
-
 import numpy as np
 from typing import Dict, Callable, List, Tuple
 from helpers.zmq_connection import ZmqClient
@@ -15,22 +12,19 @@ from helpers.parameters import Params
 
 usrp = None 
 
-
 class RxController(Controller):
 
     def _list_available_usrp_serials(self) -> Tuple[List[str], List[Dict]]:
-                                                                                           
         try:
             import uhd
             global usrp
             try:
                 out = subprocess.check_output(["uhd_find_devices"], text=True)
                 serials = re.findall(r"serial=(\w+)", out)
-
             except Exception:
                 pass
         except Exception:
-                pass
+            pass
         
     def _init_usrp_from_params(self) -> bool:
         global usrp
@@ -42,9 +36,15 @@ class RxController(Controller):
                 import uhd
                 params = Params()
                 usrp_args = params.get_usrp_args(self._component_id)
-                usrp = uhd.usrp.MultiUSRP(usrp_args) # bezposrednio tutaj bez parameters
+                usrp = uhd.usrp.MultiUSRP(usrp_args)
                 self._usrp_usb_sn = params.usrp.serial_map.get(self._component_id)
                 log.info("USRP zainicjalizowany ponownie.")
+                
+                # --- SYMULACJA BŁĘDU ---
+                if self._simulate_usrp_error:
+                    self._inject_usrp_error_simulation()
+                # -----------------------
+                
                 return True
             except Exception as e:
                 self._list_available_usrp_serials()
@@ -59,15 +59,12 @@ class RxController(Controller):
             'id': self._component_id,
             'reason' : reason,
             'need_config' : True
-            
         }
-
         self._send_message(payload)
         log.warning("Wyslano do main: component-reinit (need_config = True)")
         
     def _reset_usrp_with_backoff(self, reason: str) -> bool:
         global usrp
-
         self._consecutive_failures += 1
         wait_s = min(2**(self._consecutive_failures - 1), 60)
         log.warning(f"Resetuje USRP (powod: {reason}). Odczekam {wait_s}")
@@ -82,12 +79,9 @@ class RxController(Controller):
             self._awaiting_reconfig = True
             self._notify_reinit(reason)
         return ok
-
-    #Do sprawdzenia czy nakpierw odpytuj 5 razy i po 5 nieudanych wykrywa blad czy jak raz sie nie uda to on usuwa usrp???
         
     def _recv_samples_safe(self) -> np.ndarray:
-        "Reset urzadzenia gdy wykryje blad"
-
+        """Reset urządzenia gdy wykryje błąd"""
         global usrp
         max_attempts = self._max_attempts_per_read
         attempt = 0
@@ -102,7 +96,6 @@ class RxController(Controller):
                     [0],
                     self._rx_gain
                 )
-
                 self._consecutive_failures = 0
                 return samples
             except Exception as e:
@@ -126,27 +119,26 @@ class RxController(Controller):
                     raise
         raise RuntimeError("Nie udalo sie pobrac probek po wielokrotnych probach i resetach")
 
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._avg_power_history = -100.0 
         self._log_history_coeff = 0.95
-
         self._frequency = None
         self._samp_rate = None
         self._rx_gain = None
-        self._buffer_size = None #327680
-        self._N = None #8
+        self._buffer_size = None
+        self._N = None
         self._usrp_usb_sn = None
-
-        self._max_attempts_per_read = 5 # liczba prob resetu
+        self._max_attempts_per_read = 5
         self._consecutive_failures = 0 
+
+        # 🔧 nowa flaga symulacji
+        self._simulate_usrp_error = True  
 
         if self._test_mode:
             print(f"Symulacja połączenia z USRP")
         else:
-            #time.sleep(10)
             import uhd
             global usrp
             params = Params()
@@ -155,15 +147,41 @@ class RxController(Controller):
                 try:
                     usrp = uhd.usrp.MultiUSRP(usrp_args)
                     log.log(f"Polaczylem sie z USRP o id {self._component_id}")
+                    
+                    # --- SYMULACJA BŁĘDU ---
+                    if self._simulate_usrp_error:
+                        self._inject_usrp_error_simulation()
+                    # -----------------------
+                    
                 except:
                     self._list_available_usrp_serials()
                     log.warning(f"Brak wpisu USRP dla komponenetu o id= '{self._component_id}'")
-
-                
                 self._usrp_usb_sn = params.usrp.serial_map.get(self._component_id)
             except Exception as e:
                 log.error(f"Nie udalo sie zainicjalizowac USRP: {e}")
                 usrp = None
+
+    def _inject_usrp_error_simulation(self):
+        """Podmienia recv_num_samps tak, aby czasem generował wyjątek."""
+        import random
+        global usrp
+        if not hasattr(usrp, "recv_num_samps"):
+            log.error("Nie można podmienić recv_num_samps — brak metody.")
+            return
+        
+        _real_recv = usrp.recv_num_samps
+
+        def flaky_recv_num_samps(*args, **kwargs):
+            if random.random() < 0.4:  # 40% szans na błąd
+                raise RuntimeError(random.choice([
+                    "LIBUSB_TRANSFER_OVERFLOW",
+                    "timeout",
+                    "LIBUSB_ERROR_NO_DEVICE"
+                ]))
+            return _real_recv(*args, **kwargs)
+
+        usrp.recv_num_samps = flaky_recv_num_samps
+        log.warning("💥 Symulacja błędów USRP została aktywowana (40% szans na wyjątek).")
 
     def _on_message_received(self, message: Dict):
         match message['action']:
@@ -174,16 +192,12 @@ class RxController(Controller):
             case 'configure':
                 config =  message['data']
                 self._configure_rx(config)
-                #self._send_message({'action' : 'configure-ack'})
                 self._send_message({'action' : 'ready'})
                 log.warning("RX {} reinit", self._component_id)
             case 'measure':
                 config = message['data']
                 result = self._measure(config)
                 self._send_message({'action': 'measure-ack', 'data': result})
-                # reason = "LIBUSB_TRANSFER_OVERFLOW"
-                # self._notify_reinit(reason)
-                # time.sleep(50)
             case 'reinit':
                 log.warning('[RX {}] REINIT requested', self._component_id)
                 try:
@@ -197,7 +211,6 @@ class RxController(Controller):
                     log.exception(f'[RX {self._component_id}] Reinit excepation: {e}')
             case 'done':
                 log.warning("[RX] Finish")
-
             case _:
                 log.warning('this action is not defined!')
 
@@ -205,31 +218,19 @@ class RxController(Controller):
         if self._test_mode:
             log.info('(TEST) RX {} configured', self._component_id)
             return
-
         if 'frequency' in config:
-            # set or update frequency
             self._frequency = config['frequency']
-
         if 'samp_rate' in config:
-            # set or update sampling rate
             self._samp_rate = config['samp_rate']
-
         if 'rx_gain' in config:
-            # set or update rx gain
             self._rx_gain = config['rx_gain']
-            
         if 'buffer_size' in config:
             self._buffer_size = config['buffer_size']
-            
         if 'N' in config: 
             self._N = config['N']
-        
         if self._test_mode ==  False:
-
             log.info(f"RX Configured: Frequency = {self._frequency} Hz, Gain = {self._rx_gain} dB, sample rate = {self._samp_rate} S/s")
  
-
-
     def _measure(self, config: Dict) -> List[float]:
         if self._test_mode:
             result = -80 + np.random.rand() * 20
@@ -237,18 +238,14 @@ class RxController(Controller):
             self._avg_power_history += pow(10.0, result / 10.0) * (1.0 - self._log_history_coeff)
             self._avg_power_history = 10.0 * np.log10(self._avg_power_history)
             log.info(f"Avg: {self._avg_power_history:.2f} dBm; Current: {result:.2f} dBm")
-            return [result] #symulation
+            return [result]
             
         power_measurements = []
         while len(power_measurements) < self._N:
-            #print(self._buffer_size, self._frequency, self._samp_rate, self._rx_gain)
             samples = self._recv_samples_safe()
-            #samples = usrp.recv_num_samps(self._buffer_size, self._frequency, self._samp_rate, [0], self._rx_gain)
-            #samples = [30.0, 12.2,23.0]
             power_lin = np.mean(np.abs(samples) ** 2)
             power_log = 10 * np.log10(power_lin)
             power_measurements.append(float(power_log))
-
             self._avg_power_history = pow(10.0, self._avg_power_history / 10.0) * self._log_history_coeff
             self._avg_power_history += power_lin * (1.0 - self._log_history_coeff)
             self._avg_power_history = 10.0 * np.log10(self._avg_power_history)

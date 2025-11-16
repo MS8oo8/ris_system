@@ -5,6 +5,7 @@ from copy import deepcopy
 import os
 import pandas as pd
 from datetime import datetime
+from typing import List, Optional, Union
 
 
 class Experiment:
@@ -23,12 +24,17 @@ class Experiment:
 
 class ExampleExperiment(Experiment):
 
-    def __init__(self):
-        self._power_setup = Parameters().get().power_setup_experiment
+    def __init__(self,
+        power_setup: Optional[List[Union[float, None]]] = None,
+        results_dir: str = "results",
+    ):
+        self._power_setup: List[Union[float, None]] = power_setup if power_setup is not None else [-15.0]
+        #self._power_setup = [-15.0]
         self._itr = 0
         self._rx_count = Parameters().get().rxes.count
         self._data = np.nan * np.ones((self._rx_count, len(self._power_setup)))
         self._waiting_for = 0
+        self._results_dir = results_dir
 
     def reset(self) -> None:
         self._itr = 0
