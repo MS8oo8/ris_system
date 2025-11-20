@@ -18,25 +18,52 @@ class GeneratorController(Controller):
         self._frequency = self._parameters.frequency_hz
         self._transmit_power = self._parameters.generator_transmit_power_dbm
         self._transmission_enabled = self._parameters.generator_transmission_enabled
-        
+
         if not self._test_mode:
-            resource = 'TCPIP::{self._ip_address}::{self._port}::{self._connection_type}'.format(
-                self._parameters.generator_ip_address, self._parameters.generator_port, "SOCKET"
+            resource = (
+                f"TCPIP::{self._parameters.generator_ip_address}"
+                f"::{self._parameters.generator_port}::SOCKET"
             )
+
             try:
+                # Poprawione porównanie enumów
                 if self._model == GeneratorModel.SMM100A:
                     from RsSmw import RsSmw
                     self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
+
                 elif self._model == GeneratorModel.SMBV100A:
-                    from RsSmbv import RsSmbv 
+                    from RsSmbv import RsSmbv
                     self._generator = RsSmbv(resource, True, False, "SelectVisa='socket'")
+
                 else:
                     raise Exception(f"Unknown generator model: {self._model}")
-                
-                log.info(f"Connected to generator {self._model} at {resource}")
+
+                log.info(f"Connected to generator {self._model.value} at {resource}")
+
             except Exception as e:
                 log.error(f"Error connecting to generator: {e}")
                 exit()
+
+
+        
+        # if not self._test_mode:
+        #     resource = 'TCPIP::{self._ip_address}::{self._port}::{self._connection_type}'.format(
+        #         self._parameters.generator_ip_address, self._parameters.generator_port, "SOCKET"
+        #     )
+        #     try:
+        #         if self._model == GeneratorModel.SMM100A:
+        #             from RsSmw import RsSmw
+        #             self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
+        #         elif self._model == GeneratorModel.SMBV100A:
+        #             from RsSmbv import RsSmbv 
+        #             self._generator = RsSmbv(resource, True, False, "SelectVisa='socket'")
+        #         else:
+        #             raise Exception(f"Unknown generator model: {self._model}")
+                
+        #         log.info(f"Connected to generator {self._model} at {resource}")
+        #     except Exception as e:
+        #         log.error(f"Error connecting to generator: {e}")
+        #         exit()
 
     def _perform_reinit(self) -> None:
         try:

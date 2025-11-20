@@ -132,6 +132,7 @@ class SystemLogic:
 
         if self._measurment_queued:
             self._measurment_queued = False
+            self.rxes.wait()
             return True
         
         return True

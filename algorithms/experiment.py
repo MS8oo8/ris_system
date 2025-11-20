@@ -51,6 +51,7 @@ class ExampleExperiment(Experiment):
         return self._itr == len(self._power_setup) and not np.isnan(self._data).any()
 
     def generate_generator_params(self) -> GeneratorConfigChangeRequest | None:
+        log.info('1AAAAA {}', self._waiting_for)
         if self._waiting_for > 0:
             return None
 
@@ -62,11 +63,14 @@ class ExampleExperiment(Experiment):
             transmit_power_dbm=self._power_setup[self._itr],
             transmission_enabled=self._power_setup[self._itr] is not None
         )
-
+        log.info('2AAAAA {}', self._waiting_for)
         self._waiting_for = self._rx_count
+
         return generator_requests
 
     def store_results(self, device_id: str, results) -> None:
+        assert self._waiting_for > 0
+
         rx_id = int(device_id)
         mean_result = float(np.mean(results))
         power = self._power_setup[self._itr]
@@ -87,8 +91,12 @@ class ExampleExperiment(Experiment):
         df.to_csv(filename, mode='a', header=not os.path.exists(filename), index=False)
 
         self._data[rx_id, self._itr] = mean_result
+        log.info('3AAAAA {}', self._waiting_for)
         self._waiting_for -= 1
-
+        log.info('4AAAAA {}', self._waiting_for)
         if self._waiting_for == 0:
+            log.info('HEREEEEA {}', self._waiting_for)
             self._itr += 1
+
+        log.info('aaaaaaA:{}', self._itr)
 

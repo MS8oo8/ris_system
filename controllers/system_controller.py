@@ -47,28 +47,27 @@ class SystemController:
         timeout_s = 10
         start_time = time.time()
         
-        while True:
+        while not self._system_logic.ready():
             self._connection.receive_messages(self._handle_message_received)
-            all_ok = True  # TODO: czy tu nie mozna uzyc "ready?" z system logic
-
-            if required_generator and not self._generator_id:
-                all_ok = False
+            # if required_generator and not self._generator_id:
+            #     all_ok = False
                 
-            if len(self._ris_ids) < len(required_ris_ids):
-                all_ok = False
+            # if len(self._ris_ids) < len(required_ris_ids):
+            #     all_ok = False
                 
-            if len(self._rx_ids) < requires_rx_count:
-                all_ok = False
+            # if len(self._rx_ids) < requires_rx_count:
+            #     all_ok = False
             
-            if all_ok:
-                log.success("All component registered. Starting main")
-                break
+            # if all_ok:
+            #     log.success("All component registered. Starting main")
+            #     break
             
             if time.time() - start_time > timeout_s:
                 log.warning("Timeout: not all components registered within {} s. Sending REINIT to all...", timeout_s)
                 self._broadcast_action("reinit")
                 start_time = time.time()
-                
+
+        log.success("All component registered. Starting main") 
         while not self._system_logic.finished():
             self._connection.receive_messages(self._handle_message_received)
             self._generate_messages()
@@ -79,6 +78,7 @@ class SystemController:
     def _generate_messages(self):
         if self._system_logic.generate_measurement_command():
             log.debug('Start measurements')
+            log.info("SEDNING MEASURE")
             self._send_message({'component': 'rx', 'action': 'measure', 'data': {}})
 
         generator_request, rises_requests = self._system_logic.generate_configuration_change_requests()
