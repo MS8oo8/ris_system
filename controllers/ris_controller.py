@@ -1,31 +1,23 @@
-import zmq
-from loguru import logger as log
-import json
-# from RsSmw import *
-import numpy as np
-from typing import Dict, Callable
-from helpers.zmq_connection import ZmqClient
-from controllers.controller import Controller
-from unittest.mock import Mock
-from helpers.parameters import Parameters
 import time
-import os
+from typing import Dict
+
+from serial import Serial
+from loguru import logger as log
+
+from controllers.controller import Controller
+from helpers.parameters import Parameters, RisConfigChangeRequest
 
 
 class RisController(Controller):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.ser = None
 
-        try:
-            port = Parameters().get_ris_port(self._component_id)
-        except Exception as e:
-            raise RuntimeError(f"[RIS {self._component_id}] Cannot resolve USB port: {e}")
-        
+        port = self._parameters.ris_serial_map[self._component_id]
         log.info(f"[RIS {self._component_id}] Using serial port {port}")
 
         if not self._test_mode:
-            from serial import Serial
             try:
                 self.ser = Serial(port, baudrate=115200, timeout=10)
                 self.ser.flushInput()
@@ -33,8 +25,6 @@ class RisController(Controller):
                 log.info(f"[RIS {self._component_id}] Serial connection established.")
             except Exception as e:
                 raise RuntimeError(f"Failed to open serial port {port}: {e}")
-
-            self.timeout = 10
     
     def _perform_reinit(self) -> None:
         
@@ -43,7 +33,7 @@ class RisController(Controller):
             return
         
         try:
-            if hasattr(self, 'ser') and self.ser:
+            if self.ser is not None:
                 self.ser.flushInput()
                 self.ser.flushOutput()
                 self.ser.write(b"!RESET\n")
@@ -61,6 +51,7 @@ class RisController(Controller):
                 
             case 'configure':
                 config = message['data']
+                config = RisConfigChangeRequest(**config)
                 self._configure_ris(config)
                 self._send_message({'action': 'configure-ack'})
                 
@@ -94,14 +85,14 @@ class RisController(Controller):
             case _:
                 log.warning(f"[RIS {self._component_id}] Unknown action received.")
 
-    def _configure_ris(self, config: Dict):
-        log.info(f"SET {config['index']}: {config['pattern']}")
+    def _configure_ris(self, config: RisConfigChangeRequest):
+        log.info(f"SET {config.pattern_index}: {config.pattern_hex}")
         if self._test_mode:
             return
 
-        if 'pattern' in config:
-            self._pattern = config['pattern']
-            self._set_pattern(self._pattern.encode("utf-8"))
+    #        if 'pattern' in config:
+        self._pattern = config.pattern_hex
+        self._set_pattern(self._pattern.encode("utf-8"))
             
     def _set_pattern(self, pattern: str) -> bool:
         if not pattern:

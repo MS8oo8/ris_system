@@ -1,30 +1,32 @@
-import zmq
-import numpy as np
 import time
-from typing import Dict, Callable
+from typing import Dict
+
 from loguru import logger as log
 
-from helpers.zmq_connection import ZmqServer
+from helpers.helpers import ZmqServer
 from helpers.parameters import Parameters
 from algorithms.system_logic import SystemLogic
 from algorithms.algorithm import Algorithm
 from algorithms.experiment import Experiment
 
+
 class SystemController:
     def __init__(self,
-                 port_pub: int,
-                 port_pull: int,
+                 parameters: Parameters,
+                 # port_pub: int,
+                 # port_pull: int,
                  algorithm: Algorithm,
                  experiment: Experiment
                  ):
-        
+        self._parameters = parameters
         log.info('SystemController initialized')
         
         self._connection = ZmqServer(
-            port_pub=port_pub,
-            port_pull=port_pull
+            port_pub=self._parameters.system_controller_port_pub_sub,
+            port_pull=self._parameters.system_controller_port_push_pull
         )
         self._system_logic = SystemLogic(
+            parameters=parameters,
             algorithm=algorithm,
             experiment=experiment
         )
@@ -39,35 +41,33 @@ class SystemController:
         log.info("Waiting for all required components to register ...")
         
         required_generator = True
-        required_ris_ids = list(Parameters().get().rises.keys())
-        requires_rx_count = Parameters().get().rxes.count
+        required_ris_ids = [str(ris_id) for ris_id in range(self._parameters.ris_count)] 
+        requires_rx_count = self._parameters.rx_count
         
         timeout_s = 10
         start_time = time.time()
         
-        while True:
+        while not self._system_logic.ready():
             self._connection.receive_messages(self._handle_message_received)
-            all_ok = True
-
-
-            if required_generator and not self._generator_id:
-                all_ok = False
+            # if required_generator and not self._generator_id:
+            #     all_ok = False
                 
-            if len(self._ris_ids) < len(required_ris_ids):
-                all_ok = False
+            # if len(self._ris_ids) < len(required_ris_ids):
+            #     all_ok = False
                 
-            if len(self._rx_ids) < requires_rx_count:
-                all_ok = False
+            # if len(self._rx_ids) < requires_rx_count:
+            #     all_ok = False
             
-            if all_ok:
-                log.success("All component registered. Starting main")
-                break
+            # if all_ok:
+            #     log.success("All component registered. Starting main")
+            #     break
             
             if time.time() - start_time > timeout_s:
                 log.warning("Timeout: not all components registered within {} s. Sending REINIT to all...", timeout_s)
                 self._broadcast_action("reinit")
                 start_time = time.time()
-                
+
+        log.success("All component registered. Starting main") 
         while not self._system_logic.finished():
             self._connection.receive_messages(self._handle_message_received)
             self._generate_messages()
@@ -78,43 +78,47 @@ class SystemController:
     def _generate_messages(self):
         if self._system_logic.generate_measurement_command():
             log.debug('Start measurements')
+            log.info("SEDNING MEASURE")
             self._send_message({'component': 'rx', 'action': 'measure', 'data': {}})
 
         generator_request, rises_requests = self._system_logic.generate_configuration_change_requests()
 
         if generator_request is not None:
-            if generator_request == Parameters().get().generator:
+            if generator_request.transmission_enabled == self._parameters.generator_transmission_enabled and \
+                generator_request.transmit_power_dbm == self._parameters.generator_transmit_power_dbm and \
+                generator_request.frequency_hz == self._parameters.frequency_hz:
                 log.debug('Skipping generator config update - no change detected.')
                 self._system_logic.generator.received_ready('0')
             else:
                 log.info("Updating generator configuration.")
-                Parameters().get().generator = generator_request 
+                self._parameters.generator_transmission_enabled = generator_request.transmission_enabled
+                self._parameters.generator_transmit_power_dbm = generator_request.transmit_power_dbm
+                self._parameters.frequency_hz = generator_request.frequency_hz
                 self._send_message({
                     'component':'generator', 
                     'action': 'configure', 
                     'data': {
-                    
-                        'frequency': Parameters().get().frequency,
-                        'transmit_power': Parameters().get().generator.settings.transmit_power,
-                        'transmission_enabled': Parameters().get().generator.settings.transmission_enabled
-                    
+                        'frequency_hz': self._parameters.frequency_hz,
+                        'transmit_power_dbm': self._parameters.generator_transmit_power_dbm,
+                        'transmission_enabled': self._parameters.generator_transmission_enabled
                     }})
 
         if rises_requests is not None:
             for ris_id, ris_request in rises_requests.items():
-                if ris_request == Parameters().get().rises[ris_id]:
+                if ris_request.pattern_index == self._parameters.ris_settings[ris_id][0] and \
+                    ris_request.pattern_hex == self._parameters.ris_settings[ris_id][1]:
                     log.debug(f"Skipping RIS {ris_id} config update - no change detected.")
                     self._system_logic.rises.received_ready(ris_id)
                 else:
                     log.info(f"Updating RIS {ris_id} configuration.")
-                    Parameters().get().rises[ris_id] = ris_request
-                    log.debug('set RIS {} pattern {}', ris_id, ris_request.pattern)
+                    self._parameters.ris_settings[ris_id] = (ris_request.pattern_index, ris_request.pattern_hex) 
+                    log.debug('set RIS {} pattern {}', ris_id, ris_request.pattern_hex)
                     self._send_message({
                         'component': 'ris', 
                         'id': ris_id, 
                         'action': 'configure', 
                         'data': ris_request.model_dump()
-                        })
+                    })
 
     def _send_message(self, message: Dict):
         self._connection.send_message(message)
@@ -191,7 +195,7 @@ class SystemController:
 
                 log.debug('RX {} measured: {}', message['id'], message['data'])
             case "component-reinit":
-                
+                # TODO: czy tu nie ma za duzo?
                 if self._reinit_in_progress:
                     log.warning("Ignoring RX reinit request (already in progress)")
                     return
@@ -225,6 +229,12 @@ class SystemController:
     def _broadcast_action(self, action: str) -> None:
         log.warning("Broadcast '{}' to all known components", action)
         
+        self._send_message({
+            'action' : action
+        })
+
+        return
+        # TODO: czy musza byc osobne?
         gen_id = self._generator_id or "0"
         self._send_message({
             'component' : 'generator',

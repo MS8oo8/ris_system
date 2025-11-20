@@ -1,12 +1,9 @@
-import zmq
-from loguru import logger as log
-import time
-#import json
+from typing import Dict
 
-from typing import Dict, Callable
-from helpers.zmq_connection import ZmqClient
+from loguru import logger as log
+
 from controllers.controller import Controller
-from helpers.parameters import GeneratorConfig, Parameters, GeneratorModel
+from helpers.parameters import Parameters, GeneratorModel, GeneratorConfigChangeRequest
 
 
 class GeneratorController(Controller):
@@ -15,35 +12,58 @@ class GeneratorController(Controller):
         super().__init__(*args, **kwargs)
 
         self._generator = None
-        
-        params = Parameters().get().generator 
-        
-        self._model = params.model
-        self._ip_address = params.connection.ip
-        self._port = params.connection.port
-        #self._mode = params.connection.mode
-        self._connection_type  = params.connection.connection_type
-        
-        self._frequency = params.settings.frequency
-        self._transmit_power = params.settings.transmit_power
-        self._transmission_enabled = params.settings.transmission_enabled
-        
-
+             
+        self._model = self._parameters.generator_selected_model
+  
+        self._frequency = self._parameters.frequency_hz
+        self._transmit_power = self._parameters.generator_transmit_power_dbm
+        self._transmission_enabled = self._parameters.generator_transmission_enabled
 
         if not self._test_mode:
+            resource = (
+                f"TCPIP::{self._parameters.generator_ip_address}"
+                f"::{self._parameters.generator_port}::SOCKET"
+            )
+
             try:
-                resource = f'TCPIP::{self._ip_address}::{self._port}::{self._connection_type}'
+                # Poprawione porównanie enumów
                 if self._model == GeneratorModel.SMM100A:
-                     from RsSmw import RsSmw
-                     self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
-                if self._model == GeneratorModel.SMBV100A:
-                    from RsSmbv import RsSmbv 
+                    from RsSmw import RsSmw
+                    self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
+
+                elif self._model == GeneratorModel.SMBV100A:
+                    from RsSmbv import RsSmbv
                     self._generator = RsSmbv(resource, True, False, "SelectVisa='socket'")
-                
-                log.info(f"[INFO] Connected to generator {self._model} at {resource}")
+
+                else:
+                    raise Exception(f"Unknown generator model: {self._model}")
+
+                log.info(f"Connected to generator {self._model.value} at {resource}")
+
             except Exception as e:
-                log.error(f"[ERROR] Error connecting to generator: {e}")
+                log.error(f"Error connecting to generator: {e}")
                 exit()
+
+
+        
+        # if not self._test_mode:
+        #     resource = 'TCPIP::{self._ip_address}::{self._port}::{self._connection_type}'.format(
+        #         self._parameters.generator_ip_address, self._parameters.generator_port, "SOCKET"
+        #     )
+        #     try:
+        #         if self._model == GeneratorModel.SMM100A:
+        #             from RsSmw import RsSmw
+        #             self._generator = RsSmw(resource, True, False, "SelectVisa='socket'")
+        #         elif self._model == GeneratorModel.SMBV100A:
+        #             from RsSmbv import RsSmbv 
+        #             self._generator = RsSmbv(resource, True, False, "SelectVisa='socket'")
+        #         else:
+        #             raise Exception(f"Unknown generator model: {self._model}")
+                
+        #         log.info(f"Connected to generator {self._model} at {resource}")
+        #     except Exception as e:
+        #         log.error(f"Error connecting to generator: {e}")
+        #         exit()
 
     def _perform_reinit(self) -> None:
         try:
@@ -62,13 +82,16 @@ class GeneratorController(Controller):
         match message['action']:
             case 'new-ack':
                 config = message['data']
+                config = GeneratorConfigChangeRequest(**config)
                 self._configure_generator(config)
                 self._send_message({'action': 'ready'})
             case 'configure':
                 config = message['data']
+                config = GeneratorConfigChangeRequest(**config)
                 self._configure_generator(config)
                 self._send_message({'action': 'configure-ack'})
             case 'noise':
+                # TODO: Czy to jest gdziekolwiek uzywane?
                 self._configure_noise()
                 self._send_message({'action': 'noise-ack'})
             case 'reinit':
@@ -81,20 +104,24 @@ class GeneratorController(Controller):
             case _:
                 log.warning('this action is not defined!')
 
-    def _configure_generator(self, config: Dict):
-        print(config)
+    def _configure_generator(self, config: GeneratorConfigChangeRequest):
         if self._test_mode:
-            log.info('(TEST) generator configured')
+            log.info('(test mode) generator configured {}'.format(config))
             return
 
-        if 'frequency' in config:
-            self._frequency = config['frequency']
+        # if 'frequency' in config:
+        self._frequency = config.frequency_hz
+        log.debug('Frequency set to {}', self._frequency)
 
-        if 'transmit_power' in config:
-            self._transmit_power = config['transmit_power']
+        # if 'transmit_power' in config:
+        if config.transmit_power_dbm is not None:
+            self._transmit_power = config.transmit_power_dbm
+            log.debug('Transmit power set to {}', self._transmit_power)
 
-        if 'transmission_enabled' in config:
-            self._transmission_enabled = config['transmission_enabled']
+        # if 'transmission_enabled' in config:
+        
+        self._transmission_enabled = config.transmission_enabled
+        log.debug('Transmission enabled set to {}', self._transmission_enabled)
         
         if not self._test_mode and self._generator:
             if self._model == "SMM100A":
@@ -106,10 +133,11 @@ class GeneratorController(Controller):
                 self._generator.source.power.level.immediate.set_amplitude(self._transmit_power)
                 self._generator.output.state.set_value(self._transmission_enabled)
 
-                
             log.info(f"[GENERATOR] {self._model} Configured: Frequency = {self._frequency} Hz, Power = {self._transmit_power} dBm, Enabled = {self._transmission_enabled}")
     
     def _noise(self):
+
+        # TODO: Czy to jest gdziekolwiek uzywane?
         if self._test_mode:
             log.info('(TEST) Generator set to noise mode')
             return

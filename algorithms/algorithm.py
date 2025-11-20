@@ -1,25 +1,29 @@
-from loguru import logger as log
-from typing import Tuple, Dict
-from helpers.parameters import Parameters, GeneratorConfig, RisParams
-import numpy as np
-from copy import deepcopy
 import os
-import pandas as pd
 from datetime import datetime
+from typing import Tuple, Dict
+
+import numpy as np
+import pandas as pd
+from loguru import logger as log
+
+from helpers.parameters import (
+    Parameters, GeneratorConfigChangeRequest, RisConfigChangeRequest
+)
 
 
 class Algorithm:
-    def __init__(self):
-        self._ris_count = len(Parameters().get().rises)
-        self._rx_count = Parameters().get().rxes.count
+    def __init__(self, parameters: Parameters):
+        self._parameters = parameters
+        self._ris_count = parameters.ris_count
+        self._rx_count = parameters.rx_count
 
     def data_collection_finished(self) -> bool:
         raise NotImplementedError
 
-    def data_collection_request(self) -> Tuple[GeneratorConfig, Dict[str, RisParams]] | None:
+    def data_collection_request(self) -> Tuple[GeneratorConfigChangeRequest, Dict[str, RisConfigChangeRequest]] | None:
         raise NotImplementedError
 
-    def algorithm_step(self) -> Dict[str, RisParams]:
+    def algorithm_step(self) -> Dict[str, RisConfigChangeRequest]:
         raise NotImplementedError
 
     def store_results(self, device_id: str, results) -> None:
@@ -32,44 +36,46 @@ class Algorithm:
 class ExampleAlgorithm(Algorithm):
 
     def __init__(self,
+                 parameters: Parameters,
                  signal_power: list = None,
                  pattern_ids: list[int] | None = None,
                  results_dir: str = "results"):
-        super().__init__()
+        super().__init__(parameters=parameters)
 
         self.all_patterns = {
             0: "0x8000800080008000800080008000800080008000800080008000800080008000",
-            # 1: "0x4000400040004000400040004000400040004000400040004000400040004000",
-            # 2: "0x2000200020002000200020002000200020002000200020002000200020002000",
-            # 3: "0x1000100010001000100010001000100010001000100010001000100010001000",
-            # 4: "0x0800080008000800080008000800080008000800080008000800080008000800",
-            # 5: "0x0400040004000400040004000400040004000400040004000400040004000400",
-            # 6: "0x0200020002000200020002000200020002000200020002000200020002000200",
-            # 7: "0x0100010001000100010001000100010001000100010001000100010001000100",
-            # 8: "0x0080008000800080008000800080008000800080008000800080008000800080",
-            # 9: "0x0040004000400040004000400040004000400040004000400040004000400040",
-            # 10: "0x0020002000200020002000200020002000200020002000200020002000200020",
-            # 11: "0x0010001000100010001000100010001000100010001000100010001000100010",
-            # 12: "0x0008000800080008000800080008000800080008000800080008000800080008",
-            # 13: "0x0004000400040004000400040004000400040004000400040004000400040004",
-            # 14: "0x0002000200020002000200020002000200020002000200020002000200020002",
-            # 15: "0x0001000100010001000100010001000100010001000100010001000100010001",
-            # 16: "0xC000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000",
-            # 17: "0x6000600060006000600060006000600060006000600060006000600060006000",
-            # 18: "0x3000300030003000300030003000300030003000300030003000300030003000",
-            # 19: "0x1800180018001800180018001800180018001800180018001800180018001800",
-            # 20: "0x0C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C00",
-            # 21: "0x0600060006000600060006000600060006000600060006000600060006000600",
-            # 22: "0x0300030003000300030003000300030003000300030003000300030003000300",
-            # 23: "0x0180018001800180018001800180018001800180018001800180018001800180",
-            # 24: "0x00C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C0",
-            # 25: "0x0060006000600060006000600060006000600060006000600060006000600060",
-            # 26: "0x0030003000300030003000300030003000300030003000300030003000300030",
-            # 27: "0x0018001800180018001800180018001800180018001800180018001800180018",
-            # 28: "0x000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C",
-            # 29: "0x0006000600060006000600060006000600060006000600060006000600060006",
-            # 30: "0x0003000300030003000300030003000300030003000300030003000300030003",
-    }
+            1: "0x4000400040004000400040004000400040004000400040004000400040004000",
+            2: "0x2000200020002000200020002000200020002000200020002000200020002000",
+            3: "0x1000100010001000100010001000100010001000100010001000100010001000",
+            4: "0x0800080008000800080008000800080008000800080008000800080008000800",
+            5: "0x0400040004000400040004000400040004000400040004000400040004000400",
+            6: "0x0200020002000200020002000200020002000200020002000200020002000200",
+            7: "0x0100010001000100010001000100010001000100010001000100010001000100",
+            8: "0x0080008000800080008000800080008000800080008000800080008000800080",
+            9: "0x0040004000400040004000400040004000400040004000400040004000400040",
+            10: "0x0020002000200020002000200020002000200020002000200020002000200020",
+            11: "0x0010001000100010001000100010001000100010001000100010001000100010",
+            12: "0x0008000800080008000800080008000800080008000800080008000800080008",
+            13: "0x0004000400040004000400040004000400040004000400040004000400040004",
+            14: "0x0002000200020002000200020002000200020002000200020002000200020002",
+            15: "0x0001000100010001000100010001000100010001000100010001000100010001",
+            16: "0xC000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000",
+            17: "0x6000600060006000600060006000600060006000600060006000600060006000",
+            18: "0x3000300030003000300030003000300030003000300030003000300030003000",
+            19: "0x1800180018001800180018001800180018001800180018001800180018001800",
+            20: "0x0C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C00",
+            21: "0x0600060006000600060006000600060006000600060006000600060006000600",
+            22: "0x0300030003000300030003000300030003000300030003000300030003000300",
+            23: "0x0180018001800180018001800180018001800180018001800180018001800180",
+            24: "0x00C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C0",
+            25: "0x0060006000600060006000600060006000600060006000600060006000600060",
+            26: "0x0030003000300030003000300030003000300030003000300030003000300030",
+            27: "0x0018001800180018001800180018001800180018001800180018001800180018",
+            28: "0x000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C",
+            29: "0x0006000600060006000600060006000600060006000600060006000600060006",
+            30: "0x0003000300030003000300030003000300030003000300030003000300030003",
+        }
+
         self.signal_power = signal_power if signal_power is not None else [10.0]
         self._results_dir = results_dir
 
@@ -78,7 +84,7 @@ class ExampleAlgorithm(Algorithm):
         elif self._ris_count == 2:
             self.configs = np.array(np.meshgrid(list(self.all_patterns.keys()), list(self.all_patterns.keys()))).T.reshape(-1, 2)
         else:
-            assert False
+            assert False, 'Only 1 or 2 RIS supported'
 
         self.data = np.nan * np.ones((self._rx_count, self.configs.shape[0], len(self.signal_power)))
 
@@ -97,31 +103,33 @@ class ExampleAlgorithm(Algorithm):
     def data_collection_finished(self):
         return not np.isnan(self.data).any()
 
-    def data_collection_request(self) -> Tuple[GeneratorConfig, Dict[str, RisParams]] | None:
+    def data_collection_request(self) -> Tuple[GeneratorConfigChangeRequest, Dict[str, RisConfigChangeRequest]] | None:
         if self.waiting_for > 0: 
             return None
 
-        generator_params = deepcopy(Parameters().get().generator)
-        if self.signal_power[self.signal_power_itr] is None:
-            generator_params.settings.transmission_enabled = False
-        else:
-            generator_params.settings.transmission_enabled = True
-            generator_params.settings.transmit_power = self.signal_power[self.signal_power_itr]
+        generator_request = GeneratorConfigChangeRequest(
+            frequency_hz=self._parameters.frequency_hz,
+            transmit_power_dbm=self.signal_power[self.signal_power_itr],
+            transmission_enabled=self.signal_power[self.signal_power_itr] is not None
+        )
 
-        ris_params = deepcopy(Parameters().get().rises)
+        ris_requests = { }
         if self._ris_count == 1:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr]]  # FOR 1 RIS
-                ris_params[ris_id].index = int(self.configs[self.config_itr])
+            ris_requests['0'] = RisConfigChangeRequest(
+                pattern_index=int(self.configs[self.config_itr]),
+                pattern_hex=self.all_patterns[self.configs[self.config_itr]]
+            )
         elif self._ris_count == 2:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # FOR 2 RIS
-                ris_params[ris_id].index = int(self.configs[self.config_itr, int(ris_id)])
+            for ris_id in ['0', '1']: 
+                ris_requests[ris_id] = RisConfigChangeRequest(
+                    pattern_index=int(self.configs[self.config_itr, int(ris_id)]),
+                    pattern_hex=self.all_patterns[self.configs[self.config_itr, int(ris_id)]]
+                )
         else:
-            assert False
- 
+            assert False, 'Only 1 or 2 RIS supported'
+
         self.waiting_for = self._rx_count
-        return generator_params, ris_params
+        return generator_request, ris_requests
 
 
     def store_results(self, device_id: str, results) -> None:
@@ -168,16 +176,19 @@ class ExampleAlgorithm(Algorithm):
             if self.signal_power_itr == len(self.signal_power):
                 self.signal_power_itr = 0
 
-    def algorithm_step(self) -> Dict[str, RisParams]:
-        ris_params = deepcopy(Parameters().get().rises)
+    def algorithm_step(self) -> Dict[str, RisConfigChangeRequest]:
+        ris_requests = { }
         if self._ris_count == 1:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.selected_config]] # for 1 RIS
-                ris_params[ris_id].index = int(self.configs[self.selected_config])
+            ris_requests['0'] = RisConfigChangeRequest(
+                pattern_index=int(self.configs[self.selected_config]),
+                pattern_hex=self.all_patterns[self.configs[self.selected_config]]
+            )
         elif self._ris_count == 2:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # for 2 RIS
-                ris_params[ris_id].index = int(self.configs[self.selected_config, int(ris_id)])
+            for ris_id in ['0', '1']:
+                ris_requests[ris_id] = RisConfigChangeRequest(
+                    pattern_index=int(self.configs[self.selected_config, int(ris_id)]),
+                    pattern_hex=self.all_patterns[self.configs[self.config_itr, int(ris_id)]]
+                )
         else:
-            assert False
-        return ris_params
+            assert False, 'Only 1 or 2 RIS supported'
+        return ris_requests

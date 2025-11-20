@@ -1,29 +1,33 @@
 from time import time
-from loguru import logger as log
-from helpers.zmq_connection import ZmqClient
-from helpers.exceptions import RestartRequired
 from typing import Dict
-import uuid
+
+from loguru import logger as log
+
+from helpers.helpers import ZmqClient, RestartRequired
+from helpers.parameters import Parameters
+
 
 class Controller:
     def __init__(self,
+                 parameters: Parameters,
                  component_name: str,
                  component_id: str,
-                 controller_address: str,
-                 port_sub: int,
-                 port_push: int,
-                 test_mode: bool
+                 # controller_address: str,
+                 # port_sub: int,
+                 # port_push: int,
+                 # test_mode: bool
                  ):
+        self._parameters = parameters
         self._component_name = component_name
         self._component_id = component_id
         self._id = int(time() * 1000)
         self._connected = False
         self._connection = ZmqClient(
-            address_system_controller=controller_address,
-            port_sub=port_sub,
-            port_push=port_push
+            address_system_controller=self._parameters.system_controller_ip_address,
+            port_sub=self._parameters.system_controller_port_pub_sub,
+            port_push=self._parameters.system_controller_port_push_pull
         )
-        self._test_mode = test_mode
+        self._test_mode = self._parameters.test_mode
 
     def run(self):
         keep_running = True
@@ -35,6 +39,9 @@ class Controller:
 
     def _on_message_received(self, message: Dict) -> None:
         raise NotImplementedError
+    
+    def _on_finish(self) -> None:
+        log.warning('Component {} ({}) finished', self._component_name, self._component_id)
 
     def _on_message_received_base(self, message: Dict) -> None:
 
@@ -45,9 +52,13 @@ class Controller:
             else:
                 log.warning('Component {} NOT connected', self._component_name)
 
-        if message['action'] == 'restart':
+        if message['action'] in ['restart', 'reinit']:
             log.warning('Component {} restarting as requested', self._component_name)
             raise RestartRequired
+        
+        if message['action'] == 'done':
+            self._on_finish()
+            return
 
         if message['component'] != self._component_name:
             return
@@ -64,6 +75,5 @@ class Controller:
         message['id'] = self._component_id 
 
         self._connection.send_message(message)
-        print(message)
         log.debug('Component {} send: {}', self._component_name, message)
 
