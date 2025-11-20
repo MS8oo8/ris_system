@@ -14,7 +14,9 @@ log.add(sys.stderr, level="INFO")
 
 # 2. set parameters
 parameters = Parameters(
-    frequency_hz=2.3e9
+    frequency_hz=2.3e9,
+    rx_count=1,
+    test_mode=True
 )
 
 # 3. set algorithm
@@ -28,7 +30,7 @@ algorithm = ExampleAlgorithm(
 # 4. set experiment
 experiment = ExampleExperiment(
     parameters=parameters,
-    power_setup=[-30, -25, -20, None, -15] ,
+    power_setup=[-30, -25, -20, None, -15] * 1000 ,
     results_dir="results" 
 )
 

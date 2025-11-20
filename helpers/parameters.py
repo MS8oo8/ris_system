@@ -27,10 +27,10 @@ class Parameters(BaseModel):
     ''' general parameters '''
     frequency_hz: float = 5e9
     sleep_after_restart_s: float = 3.0
-    test_mode: bool = True
+    test_mode: bool = False
 
     ''' system controller parameters '''
-    system_controller_ip_address: str = 'localhost'
+    system_controller_ip_address: str = '192.168.8.219' #'localhost'
     system_controller_port_pub_sub: int = 5558
     system_controller_port_push_pull: int = 5559
 
