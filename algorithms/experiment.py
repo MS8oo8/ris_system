@@ -1,17 +1,23 @@
-from loguru import logger as log
-from helpers.parameters import Parameters, GeneratorParams, GeneratorConnection
-import numpy as np
-from copy import deepcopy
 import os
-import pandas as pd
 from datetime import datetime
+from typing import List, Optional
+
+import numpy as np
+import pandas as pd
+from loguru import logger as log
+
+from helpers.parameters import Parameters, GeneratorConfigChangeRequest
 
 
 class Experiment:
+
+    def __init__(self, parameters: Parameters):
+        self._parameters = parameters
+
     def finished(self) -> bool:
         raise NotImplementedError
 
-    def generate_generator_params(self) -> GeneratorParams | None:
+    def generate_generator_params(self) -> GeneratorConfigChangeRequest | None:
         raise NotImplementedError
 
     def store_results(self, device_id: str, results) -> None:
@@ -23,14 +29,19 @@ class Experiment:
 
 class ExampleExperiment(Experiment):
 
-    def __init__(self):
-        #ustawiamy jedna próbkę 
-        self._power_setup = [-15.0] * 100 # + [-10.0] *10 + [-5.0] * 10 + [0.0] * 10 + [5.0] * 10 + [10]  * 10 + [-15]  *10 
-        #self._power_setup = [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50 + [None] * 100 + [10] * 50
+    def __init__(self,
+        parameters: Parameters,
+        power_setup: Optional[List[float | None]] = None,
+        results_dir: str = "results",
+    ):
+        super().__init__(parameters=parameters)
+
+        self._power_setup: List[float | None] = power_setup if power_setup is not None else [-15.0]
         self._itr = 0
-        self._rx_count = Parameters().get().rxes.count
+        self._rx_count = self._parameters.rx_count
         self._data = np.nan * np.ones((self._rx_count, len(self._power_setup)))
         self._waiting_for = 0
+        self._results_dir = results_dir
 
     def reset(self) -> None:
         self._itr = 0
@@ -39,36 +50,27 @@ class ExampleExperiment(Experiment):
     def finished(self):
         return self._itr == len(self._power_setup) and not np.isnan(self._data).any()
 
-    def generate_generator_params(self) -> GeneratorParams | None:
+    def generate_generator_params(self) -> GeneratorConfigChangeRequest | None:
+        log.info('1AAAAA {}', self._waiting_for)
         if self._waiting_for > 0:
             return None
 
         log.debug('Experiment step {}/{}: power {} ', 
                 self._itr + 1, len(self._power_setup), self._power_setup[self._itr])
 
-        params = deepcopy(Parameters().get().generator)
-        if self._power_setup[self._itr] is None:
-            params.connection.transmission_enabled = False
-        else:
-            params.connection.transmission_enabled = True
-            params.connection.transmit_power = self._power_setup[self._itr]
-
+        generator_requests = GeneratorConfigChangeRequest(
+            frequency_hz=self._parameters.frequency_hz,
+            transmit_power_dbm=self._power_setup[self._itr],
+            transmission_enabled=self._power_setup[self._itr] is not None
+        )
+        log.info('2AAAAA {}', self._waiting_for)
         self._waiting_for = self._rx_count
 
-        return params
-
-    # def store_results(self, device_id: str, results) -> None:
-    #     self._waiting_for -= 1
-    #     self._data[int(device_id), self._itr] = np.mean(results)
-
-    #     if self._waiting_for == 0:
-    #         self._itr += 1
-            
-    #         if self.finished():
-    #             Parameters().save_experyment_result_csv(self._data)
-
+        return generator_requests
 
     def store_results(self, device_id: str, results) -> None:
+        assert self._waiting_for > 0
+
         rx_id = int(device_id)
         mean_result = float(np.mean(results))
         power = self._power_setup[self._itr]
@@ -89,9 +91,12 @@ class ExampleExperiment(Experiment):
         df.to_csv(filename, mode='a', header=not os.path.exists(filename), index=False)
 
         self._data[rx_id, self._itr] = mean_result
+        log.info('3AAAAA {}', self._waiting_for)
         self._waiting_for -= 1
-
+        log.info('4AAAAA {}', self._waiting_for)
         if self._waiting_for == 0:
+            log.info('HEREEEEA {}', self._waiting_for)
             self._itr += 1
-            if self.finished():
-                Parameters().save_experyment_result_csv(self._data)
+
+        log.info('aaaaaaA:{}', self._itr)
+

@@ -5,6 +5,9 @@ import zmq
 from typing import Callable, Dict
 
 
+class RestartRequired(Exception):
+    pass
+
 class ZmqBase:
 
     def __init__(self,

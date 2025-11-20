@@ -1,25 +1,29 @@
-from loguru import logger as log
-from typing import Tuple, Dict
-from helpers.parameters import Parameters, GeneratorParams, RisParams
-import numpy as np
-from copy import deepcopy
 import os
-import pandas as pd
 from datetime import datetime
+from typing import Tuple, Dict
+
+import numpy as np
+import pandas as pd
+from loguru import logger as log
+
+from helpers.parameters import (
+    Parameters, GeneratorConfigChangeRequest, RisConfigChangeRequest
+)
 
 
 class Algorithm:
-    def __init__(self):
-        self._ris_count = len(Parameters().get().rises)
-        self._rx_count = Parameters().get().rxes.count
+    def __init__(self, parameters: Parameters):
+        self._parameters = parameters
+        self._ris_count = parameters.ris_count
+        self._rx_count = parameters.rx_count
 
     def data_collection_finished(self) -> bool:
         raise NotImplementedError
 
-    def data_collection_request(self) -> Tuple[GeneratorParams, Dict[str, RisParams]] | None:
+    def data_collection_request(self) -> Tuple[GeneratorConfigChangeRequest, Dict[str, RisConfigChangeRequest]] | None:
         raise NotImplementedError
 
-    def algorithm_step(self) -> Dict[str, RisParams]:
+    def algorithm_step(self) -> Dict[str, RisConfigChangeRequest]:
         raise NotImplementedError
 
     def store_results(self, device_id: str, results) -> None:
@@ -31,11 +35,15 @@ class Algorithm:
 
 class ExampleAlgorithm(Algorithm):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self,
+                 parameters: Parameters,
+                 signal_power: list = None,
+                 pattern_ids: list[int] | None = None,
+                 results_dir: str = "results"):
+        super().__init__(parameters=parameters)
 
         self.all_patterns = {
-                       0: "0x8000800080008000800080008000800080008000800080008000800080008000",
+            0: "0x8000800080008000800080008000800080008000800080008000800080008000",
             1: "0x4000400040004000400040004000400040004000400040004000400040004000",
             2: "0x2000200020002000200020002000200020002000200020002000200020002000",
             3: "0x1000100010001000100010001000100010001000100010001000100010001000",
@@ -51,7 +59,6 @@ class ExampleAlgorithm(Algorithm):
             13: "0x0004000400040004000400040004000400040004000400040004000400040004",
             14: "0x0002000200020002000200020002000200020002000200020002000200020002",
             15: "0x0001000100010001000100010001000100010001000100010001000100010001",
-            
             16: "0xC000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000",
             17: "0x6000600060006000600060006000600060006000600060006000600060006000",
             18: "0x3000300030003000300030003000300030003000300030003000300030003000",
@@ -67,17 +74,17 @@ class ExampleAlgorithm(Algorithm):
             28: "0x000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C000C",
             29: "0x0006000600060006000600060006000600060006000600060006000600060006",
             30: "0x0003000300030003000300030003000300030003000300030003000300030003",
+        }
 
-        } #patterny same paskki pojedyncze - pojedyncze o roznej długosci - bez przeprlatych (do 4 grubosci)
-        self.signal_power = [10.0] #5.0, 10.0
+        self.signal_power = signal_power if signal_power is not None else [10.0]
+        self._results_dir = results_dir
 
-        # TO JEST TYLKO DLA OPCJI Z DWOMA RISAMI - nie mozna tego uzywac dla jednego...
         if self._ris_count == 1:
             self.configs = np.array(list(self.all_patterns.keys()))
         elif self._ris_count == 2:
             self.configs = np.array(np.meshgrid(list(self.all_patterns.keys()), list(self.all_patterns.keys()))).T.reshape(-1, 2)
         else:
-            assert False
+            assert False, 'Only 1 or 2 RIS supported'
 
         self.data = np.nan * np.ones((self._rx_count, self.configs.shape[0], len(self.signal_power)))
 
@@ -95,82 +102,68 @@ class ExampleAlgorithm(Algorithm):
 
     def data_collection_finished(self):
         return not np.isnan(self.data).any()
-        print(f'[DATA CHECK] data_collectiuon_finished: {finished}, has NaNs: {np.isnan(self.data).sum()}')
 
-    def data_collection_request(self) -> Tuple[GeneratorParams, Dict[str, RisParams]] | None:
-        if self.waiting_for > 0: #bylo >
+    def data_collection_request(self) -> Tuple[GeneratorConfigChangeRequest, Dict[str, RisConfigChangeRequest]] | None:
+        if self.waiting_for > 0: 
             return None
 
-        # log.debug('Algorithm requesting data for power {} {}/{}, config {} {}/{}', 
-        #         self.signal_power[self.signal_power_itr], self.signal_power_itr + 1, len(self.signal_power),
-        #         self.configs[self.config_itr, :], self.config_itr + 1, self.configs.shape[0])
+        generator_request = GeneratorConfigChangeRequest(
+            frequency_hz=self._parameters.frequency_hz,
+            transmit_power_dbm=self.signal_power[self.signal_power_itr],
+            transmission_enabled=self.signal_power[self.signal_power_itr] is not None
+        )
 
-        generator_params = deepcopy(Parameters().get().generator)
-        if self.signal_power[self.signal_power_itr] is None:
-            generator_params.connection.transmission_enabled = False
-        else:
-            generator_params.connection.transmission_enabled = True
-            generator_params.connection.transmit_power = self.signal_power[self.signal_power_itr]
-
-        ris_params = deepcopy(Parameters().get().rises)
+        ris_requests = { }
         if self._ris_count == 1:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr]]  # FOR 1 RIS
-                ris_params[ris_id].index = int(self.configs[self.config_itr])
+            ris_requests['0'] = RisConfigChangeRequest(
+                pattern_index=int(self.configs[self.config_itr]),
+                pattern_hex=self.all_patterns[self.configs[self.config_itr]]
+            )
         elif self._ris_count == 2:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # FOR 2 RIS
-                ris_params[ris_id].index = int(self.configs[self.config_itr, int(ris_id)])
+            for ris_id in ['0', '1']: 
+                ris_requests[ris_id] = RisConfigChangeRequest(
+                    pattern_index=int(self.configs[self.config_itr, int(ris_id)]),
+                    pattern_hex=self.all_patterns[self.configs[self.config_itr, int(ris_id)]]
+                )
         else:
-            assert False
- 
+            assert False, 'Only 1 or 2 RIS supported'
+
         self.waiting_for = self._rx_count
-        return generator_params, ris_params
+        return generator_request, ris_requests
 
-    # def store_results(self, device_id: str, results) -> None:
-    #     self.waiting_for -= 1
-    #     self.data[int(device_id), self.config_itr, self.signal_power_itr] = np.mean(results)
-
-    #     if self.waiting_for == 0:
-    #         if self.data_collection_finished():
-    #             Parameters().save_algorithm_results_to_csv(self.data, self.configs, self.signal_power)
-    #         self._next_data_collection_iteration()
 
     def store_results(self, device_id: str, results) -> None:
         rx_id = int(device_id)
         power = self.signal_power[self.signal_power_itr]
         config = self.configs[self.config_itr]
+        config = np.atleast_1d(config)
         mean_result = float(np.mean(results))
 
-        # # dopisz dane do pliku CSV
-        # timestamp = datetime.now().strftime("%Y%m%d")
-        # results_dir = "results"
-        # os.makedirs(results_dir, exist_ok=True)
-        # filename = os.path.join(results_dir, f"live_algorithm_rx_{rx_id}_{timestamp}.csv")
 
-        # row = {
-        #     "Timestamp": datetime.now().isoformat(),
-        #     "Power": "Noise" if power is None else power,
-        #     "Result": mean_result
-        # }
-        # for ris_idx, pattern_id in enumerate(config):
-        #     row[f"PatternRIS{ris_idx}"] = pattern_id
+        timestamp = datetime.now().strftime("%Y%m%d")
+        results_dir = "results"
+        os.makedirs(results_dir, exist_ok=True)
+        filename = os.path.join(results_dir, f"live_algorithm_rx_{rx_id}_{timestamp}.csv")
 
-        # df = pd.DataFrame([row])
-        # df.to_csv(filename, mode='a', header=not os.path.exists(filename), index=False)
+        row = {
+            "Timestamp": datetime.now().isoformat(),
+            "Power": "Noise" if power is None else power,
+            "Result": mean_result
+        }
+        for ris_idx, pattern_id in enumerate(config):
+            row[f"PatternRIS{ris_idx}"] = pattern_id
 
-        # # nadal aktualizuj strukturę w pamięci, jeśli potrzebna
+        df = pd.DataFrame([row])
+        df.to_csv(filename, mode='a', header=not os.path.exists(filename), index=False)
+
         self.data[rx_id, self.config_itr, self.signal_power_itr] = mean_result
         self.waiting_for -= 1
 
         if self.waiting_for == 0:
-            # if self.data_collection_finished():
-            #     Parameters().save_algorithm_results_to_csv(self.data, self.configs, self.signal_power)
             self._next_data_collection_iteration()
 
         if self.data_collection_finished():
-            # one RX best pattern (one power)
-            self.selected_config = np.argmax(self.data, axis=1)[0][0] # for 1 RIS
+            self.selected_config = np.argmax(self.data, axis=1)[0][0]
             for i in range(len(self.configs)):
                 log.info('Pattern {} avg. power: {} dBm {}', self.configs[i], self.data[0, i, 0], " --- selected " if i == self.selected_config else "")
 
@@ -183,18 +176,19 @@ class ExampleAlgorithm(Algorithm):
             if self.signal_power_itr == len(self.signal_power):
                 self.signal_power_itr = 0
 
-    def algorithm_step(self) -> Dict[str, RisParams]:
-        # SELECT BEST ? CHANGE / ETC.
-        # print(self.config_itr)
-        ris_params = deepcopy(Parameters().get().rises)
+    def algorithm_step(self) -> Dict[str, RisConfigChangeRequest]:
+        ris_requests = { }
         if self._ris_count == 1:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.selected_config]] # for 1 RIS
-                ris_params[ris_id].index = int(self.configs[self.selected_config])
+            ris_requests['0'] = RisConfigChangeRequest(
+                pattern_index=int(self.configs[self.selected_config]),
+                pattern_hex=self.all_patterns[self.configs[self.selected_config]]
+            )
         elif self._ris_count == 2:
-            for ris_id in ris_params:
-                ris_params[ris_id].pattern = self.all_patterns[self.configs[self.config_itr, int(ris_id)]] # for 2 RIS
-                ris_params[ris_id].index = int(self.configs[self.selected_config, int(ris_id)])
+            for ris_id in ['0', '1']:
+                ris_requests[ris_id] = RisConfigChangeRequest(
+                    pattern_index=int(self.configs[self.selected_config, int(ris_id)]),
+                    pattern_hex=self.all_patterns[self.configs[self.config_itr, int(ris_id)]]
+                )
         else:
-            assert False
-        return ris_params
+            assert False, 'Only 1 or 2 RIS supported'
+        return ris_requests
