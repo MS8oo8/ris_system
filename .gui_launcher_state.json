@@ -1,0 +1,31 @@
+{
+  "repo_dir": "C:\\Users\\marsieradzka\\Downloads\\ris_system-final",
+  "system_ip": "localhost",
+  "start_delay_seconds": "2.0",
+  "components": {
+    "generator:0": {
+      "ip": "192.168.8.30",
+      "workdir": "C:\\Users\\marsieradzka\\Downloads\\ris_system-final"
+    },
+    "ris:0": {
+      "ip": "",
+      "workdir": "C:\\Users\\marsieradzka\\Downloads\\ris_system-final"
+    },
+    "ris:1": {
+      "ip": "",
+      "workdir": "C:\\Users\\marsieradzka\\Downloads\\ris_system-final"
+    },
+    "rx:0": {
+      "ip": "",
+      "workdir": "C:\\Users\\marsieradzka\\Downloads\\ris_system-final"
+    },
+    "rx:1": {
+      "ip": "",
+      "workdir": "C:\\Users\\marsieradzka\\Downloads\\ris_system-final"
+    },
+    "rx:2": {
+      "ip": "",
+      "workdir": "C:\\Users\\marsieradzka\\Downloads\\ris_system-final"
+    }
+  }
+}
