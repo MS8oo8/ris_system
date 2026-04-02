@@ -60,7 +60,7 @@ class Parameters(BaseModel):
     rx_samp_rate: float = 500e3
     rx_gain_db: float = 40.0
     rx_buffer_size: int = int(40e3) 
-    rx_count: int = 1
+    rx_count: int = 2
     rx_repeats: int = 1  
     rx_initial_avg_power_history_dbm: float = -100.0
     rx_log_history_coeff: float = 0.95
@@ -73,6 +73,6 @@ class Parameters(BaseModel):
     ris_settings: Dict[str, Tuple[int, str]] = Field(default={
         '0': (None, None)
     })
-    ris_count: int = 1
+    ris_count: int = 3
     ris_serial_boudrate: int = 115200
     ris_serial_timeout: float = 10.0
