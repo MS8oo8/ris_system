@@ -1,8 +1,10 @@
 import sys
 import time
 from loguru import logger as log
+import asyncio
+import functools
 
-from helpers.helpers import RestartRequired
+from helpers.helpers import RestartRequired, Exit
 from algorithms.algorithm import ExampleAlgorithm
 from algorithms.experiment import ExampleExperiment
 from controllers.launcher import create_controller
@@ -20,10 +22,9 @@ log.add(
 # 2. set parameters
 parameters = Parameters(
     frequency_hz=2.3e9,
-    test_mode= False,
+    test_mode=False,
+    ris_count=2,
     system_controller_ip_address = '192.168.8.219'
-
-
 )
 
 # 3. set algorithm
@@ -31,19 +32,18 @@ algorithm = ExampleAlgorithm(
     parameters=parameters,
     signal_power = ([10.0] * 1), # + [5.0] * 2 + [None] * 10),
     pattern_ids=[0],
-    results_dir="results" 
+    results_dir="../results" 
 )
 
 # 4. set experiment
 experiment = ExampleExperiment(
     parameters=parameters,
-    power_setup=([-30] * 10 + [None] * 30 + [15] * 30 + [0] * 100 + [None] * 100 + [-10] * 50 + [-20] * 100000) ,
-    results_dir="results" 
+    power_setup=([-30] * 10 + [None] * 10) ,
+    results_dir="../results" 
 )
 
 
 if __name__ == '__main__':
-    # read input from command line
     controller_type = 'system'
     controller_id = 0
     if len(sys.argv) == 2:
@@ -70,6 +70,9 @@ if __name__ == '__main__':
             log.warning("Keyboard interrupt received. Shutting down controller...")
             controller._send_message({'action': "done"})
             break
+        except Exit:
+            break
         except RestartRequired:
             log.info("Restarting {} controller...", controller_type)
             time.sleep(Parameters().sleep_after_restart_s)
+

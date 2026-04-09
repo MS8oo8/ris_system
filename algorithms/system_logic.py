@@ -64,7 +64,12 @@ class RisesHandler(DeviceHandler):
         assert device_id in self._ready
         log.info("Registered new RIS: {}", device_id)
 
-        return None
+        #wcześniej tu było return None, zwrot parametrów transmisji w kontrolerze RIS
+        return {
+            'serial_port': self._parameters.ris_serial_map[device_id],
+            'baudrate': self._parameters.ris_serial_boudrate,
+            'timeout': self._parameters.ris_serial_timeout
+        }
 
     def received_ready(self, device_id) -> None:
         assert device_id in self._ready
@@ -91,6 +96,7 @@ class RxesHandler(DeviceHandler):
 
         self._ready[device_id] = False
         return {
+            'usrp_serial': self._parameters.rx_usrp_serial_map[device_id],
             'frequency_hz': self._parameters.frequency_hz,
             'samp_rate': self._parameters.rx_samp_rate,
             'gain_db': self._parameters.rx_gain_db,
