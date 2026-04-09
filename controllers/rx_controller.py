@@ -1,12 +1,13 @@
 from typing import Dict, List
 
+import subprocess
 import numpy as np
 from loguru import logger as log
 
 from controllers.controller import Controller
 from helpers.parameters import RxConfigChangeRequest
 
-usrp = None  # global handler for USRP (only one instance per controller / process)
+usrp = None 
 
 
 class RxController(Controller):
@@ -26,6 +27,7 @@ class RxController(Controller):
 
         self._consecutive_failures = 0 
 
+        """
         if self._test_mode:
             log.info(f"(test mode) Simulating USRP connection for RX {self._component_id}")
         else:
@@ -41,6 +43,11 @@ class RxController(Controller):
                 # self._list_available_usrp_serials()
                 log.error(f"[RX {self._component_id}] Failed to initialize USRP: {ex}")
                 
+        """
+
+        log.info(f"[RX {self._component_id}] Initialized. Waiting for master configuration...")
+        
+
     def _recv_samples_safe(self) -> np.ndarray:
         global usrp
         assert self._test_mode == False, 'Cannot receive samples in test mode.'
@@ -65,8 +72,36 @@ class RxController(Controller):
         match message['action']:
             case 'new-ack':
                 config = message['data']
-                config = RxConfigChangeRequest(**config)
-                self._configure_rx(config)
+
+                #wyciągam numer seryjny z wiadomości
+                self._usrp_usb_sn = config.pop('usrp_serial', None)
+                
+                #nawiązuję fizyczne połączenie z urządzeniem USRP
+                if not self._test_mode and self._usrp_usb_sn:
+                    import uhd
+                    global usrp
+                    try:
+                        usrp = uhd.usrp.MultiUSRP(f'serial={self._usrp_usb_sn}')
+                        log.info(f"[RX {self._component_id}] Connected to USRP (SN: {self._usrp_usb_sn}).")
+                    except Exception as ex:
+                        #wywolanie narzedzia diagnostycznego UHD, zwrócenie raportu "UHD_FIND_DEVICES"
+                        found_devices_dump = subprocess.getoutput("uhd_find_devices")
+                        
+                        log.error(f"[RX {self._component_id}] Failed to open USRP {self._usrp_usb_sn}. Error: {ex}")
+                        
+                        #wynik raportu przekazywany jest do kontrolera
+                        self._send_message({
+                            'action': 'hardware-error', 
+                            'requested_serial': self._usrp_usb_sn,
+                            'found_devices': found_devices_dump,
+                            'error_message': str(ex)
+                        })
+                        
+                        self._send_message({'action': 'restart'})
+                        return
+                    
+                config_req = RxConfigChangeRequest(**config)
+                self._configure_rx(config_req)
                 self._send_message({'action': 'ready'})
             case 'configure':
                 config =  message['data']

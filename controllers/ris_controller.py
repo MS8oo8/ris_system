@@ -1,4 +1,5 @@
 import time
+import glob
 from typing import Dict
 
 from serial import Serial
@@ -8,29 +9,52 @@ from controllers.controller import Controller
 from helpers.parameters import RisConfigChangeRequest
 
 
+
 class RisController(Controller):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ser = None
-
-        port = self._parameters.ris_serial_map[self._component_id]
-        log.info(f"[RIS {self._component_id}] uses serial port {port}")
-
-        if not self._test_mode:
-            try:
-                self.ser = Serial(port, baudrate=self._parameters.ris_serial_boudrate, timeout=self._parameters.ris_serial_timeout)
-                self.ser.flushInput()
-                self.ser.flushOutput()
-                log.info(f"[RIS {self._component_id}] Serial connection established.")
-            except Exception as e:
-                raise RuntimeError(f"Failed to open serial port {port}: {e}")
-
+        log.info(f"[RIS {self._component_id}] Initialized. Waiting for master configuration...")
+        
     def _on_message_received(self, message: Dict):
         match message['action']:
             case 'new-ack':
-                self._send_message({'action': 'ready'})
-                
+                #self._send_message({'action': 'ready'})
+                #pozyskanie parametrów transmisji od głównego kontrolera
+                config = message['data']
+                port = config['serial_port']
+                baudrate = config['baudrate']
+                timeout = config['timeout']
+
+                #log.info(f"[RIS {self._component_id}] Received config: Port {port}")
+
+                #zestawienie fizycznego połączenia z panelem RIS
+                if not self._test_mode:
+                    try:
+                        self.ser = Serial(port, baudrate=baudrate, timeout=timeout)
+                        self.ser.flushInput()
+                        self.ser.flushOutput()
+                        log.info(f"[RIS {self._component_id}] Serial connection established!")
+                        
+                        #jezeli kontroler i panel są poprawnie połączone, mozna wyslac komuniakt ready
+                        self._send_message({'action': 'ready'})
+                    except Exception as e:
+                        #odpowiednik ls /dev/moj_ris - zakładamy ze kod został przystosowany do udev w linux
+                        custom_devices = glob.glob('/dev/moj_ris*')
+                        log.error(f"[RIS {self._component_id}] Failed to open {port}. Found custom devices: {custom_devices}")
+                        #w razie błędu kabla możemy wysłać żądanie restartu
+                        self._send_message({
+                            'action': 'hardware-error', 
+                            'requested_port': port,
+                            'found_custom_devices': custom_devices,
+                            'error_message': str(e)
+                        })
+                        
+                        self._send_message({'action': 'restart'})
+                else:
+                    self._send_message({'action': 'ready'})
+
             case 'configure':
                 config = message['data']
                 config = RisConfigChangeRequest(**config)
@@ -63,5 +87,3 @@ class RisController(Controller):
             if time.time() - start_time > self._parameters.ris_serial_timeout:
                 log.error("RIS: Timeout during pattern setting.")
                 return False
-
-        
