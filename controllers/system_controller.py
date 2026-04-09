@@ -1,4 +1,6 @@
+
 import time
+import sys
 from typing import Dict
 
 from loguru import logger as log
@@ -53,6 +55,12 @@ class SystemController:
             self._generate_messages()
 
         self._send_message({'action': 'done'})
+
+        time.sleep(0.5) 
+        
+        if hasattr(self._connection, 'close'):
+            self._connection.close()
+
 
         
     def _generate_messages(self):
@@ -146,6 +154,17 @@ class SystemController:
             case 'configure-ack':
                 self._system_logic.rises.received_ready(device_id=message['id'])
                 log.debug('RIS {} changed configuration.', message['id'])
+            case 'hardware-error':
+                log.error(
+                    "RIS {} hardware fault! Requested: {}. Error: {}. Actually found mapped devices: {}", 
+                    message['id'], 
+                    message.get('requested_port'), 
+                    message.get('error_message'),
+                    message.get('found_custom_devices')
+                )
+            case 'restart':
+                log.error('RIS {} requested restart', message['id'])
+                self._send_message({'action': 'restart'})
             case _:
                 log.warning('Unknown RIS action!')
                 
@@ -169,6 +188,14 @@ class SystemController:
                 self._system_logic.receive_measurement_results(device_id=message['id'], results=message['data'])
 
                 log.debug('RX {} measured: {}', message['id'], message['data'])
+            case 'hardware-error':
+                log.error(
+                    "RX {} hardware fault! Requested Serial: {}. Error: {}. UHD Report:\n{}", 
+                    message['id'], 
+                    message.get('requested_serial'), 
+                    message.get('error_message'),
+                    message.get('found_devices')
+                )
             case "restart":
                 log.error('RX {} requested restart', message['id'])
                 self._send_message({'action': 'restart'})

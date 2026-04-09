@@ -1,0 +1,14 @@
+[project]
+name = "ris-system"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "loguru>=0.7.3",
+    "numpy>=2.2.6",
+    "pandas>=2.3.3",
+    "pydantic>=2.12.5",
+    "pyserial>=3.5",
+    "zmq>=0.0.0",
+]

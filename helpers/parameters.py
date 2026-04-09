@@ -37,7 +37,7 @@ class Parameters(BaseModel):
     frequency_hz: float = 5e9
     sleep_after_restart_s: float = 3.0
     test_mode: bool = True
-    test_mode_rx_fail_chance: float = 0.01
+    test_mode_rx_fail_chance: float = 0.0
 
     ''' system controller parameters '''
     system_controller_ip_address: str = 'localhost'
@@ -48,19 +48,19 @@ class Parameters(BaseModel):
     ''' generator parameters '''
     generator_transmit_power_dbm: float = -20.0
     generator_transmission_enabled: bool = True
-    generator_ip_address: str = "192.168.8.30"
+    generator_ip_address: str = "192.168.0.30"
     generator_port: int = 5025
     generator_selected_model: GeneratorModel = GeneratorModel.SMBV100A
 
     ''' rx / usrp parameters '''
     rx_usrp_serial_map: Dict[str, str] = Field(default={
        '0': '3273ADC',
-       '1': '3273ACF',
+       '1': '3113F3B',
     })
     rx_samp_rate: float = 500e3
     rx_gain_db: float = 40.0
     rx_buffer_size: int = int(40e3) 
-    rx_count: int = 1
+    rx_count: int = 2
     rx_repeats: int = 1  
     rx_initial_avg_power_history_dbm: float = -100.0
     rx_log_history_coeff: float = 0.95
@@ -69,10 +69,15 @@ class Parameters(BaseModel):
     ris_serial_map: Dict[str, str] = Field(default={
         '0': '/dev/ttyUSB0',
         '1': '/dev/ttyUSB1',
+        '2': '/dev/ttyUSB2',
+        '3': '/dev/ttyUSB3',
     })
     ris_settings: Dict[str, Tuple[int, str]] = Field(default={
-        '0': (None, None)
+        '0': (None, None),
+        '1': (None, None),
+        '2': (None, None),
+        '3': (None, None),
     })
-    ris_count: int = 1
+    ris_count: int = 3
     ris_serial_boudrate: int = 115200
     ris_serial_timeout: float = 10.0
