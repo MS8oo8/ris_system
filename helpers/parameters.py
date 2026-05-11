@@ -37,7 +37,7 @@ class Parameters(BaseModel):
     frequency_hz: float = 5e9
     sleep_after_restart_s: float = 3.0
     test_mode: bool = True
-    test_mode_rx_fail_chance: float = 0.01
+    test_mode_rx_fail_chance: float = 0.0
 
     ''' system controller parameters '''
     system_controller_ip_address: str = 'localhost'
@@ -56,6 +56,8 @@ class Parameters(BaseModel):
     rx_usrp_serial_map: Dict[str, str] = Field(default={
        '0': '3273ADC',
        '1': '3273ACF',
+       '2': '3273AD0',
+       '3': '3273AD1',
     })
     rx_samp_rate: float = 500e3
     rx_gain_db: float = 40.0
@@ -69,10 +71,15 @@ class Parameters(BaseModel):
     ris_serial_map: Dict[str, str] = Field(default={
         '0': '/dev/ttyUSB0',
         '1': '/dev/ttyUSB1',
+        '2': '/dev/ttyUSB2',
+        '3': '/dev/ttyUSB3',
     })
     ris_settings: Dict[str, Tuple[int, str]] = Field(default={
-        '0': (None, None)
+        '0': (None, None),
+        '1': (None, None),
+        '2': (None, None),
+        '3': (None, None),
     })
-    ris_count: int = 1
+    ris_count: int = 3
     ris_serial_boudrate: int = 115200
     ris_serial_timeout: float = 10.0

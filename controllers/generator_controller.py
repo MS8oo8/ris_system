@@ -84,8 +84,3 @@ class GeneratorController(Controller):
                 self._generator.output.state.set_value(self._transmission_enabled)
 
             log.info(f"[GENERATOR] {self._model} Configured: Frequency = {self._frequency} Hz, Power = {self._transmit_power} dBm, Enabled = {self._transmission_enabled}")
-
-
-
-
-

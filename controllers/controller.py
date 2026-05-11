@@ -26,12 +26,15 @@ class Controller:
         self._test_mode = self._parameters.test_mode
 
     def run(self):
-        keep_running = True
+        self._keep_running = True
         self._send_message({'action': 'new', '_id': self._id})
-        while keep_running:
+        while self._keep_running:
             self._connection.receive_messages(
                 on_message_received=self._on_message_received_base
             )
+        if hasattr(self._connection, 'close'):
+            self._connection.close()
+        
 
     def _on_message_received(self, message: Dict) -> None:
         raise NotImplementedError
@@ -53,6 +56,7 @@ class Controller:
         
         if message['action'] == 'done':
             self._on_finish()
+            self._keep_running = False
             return
 
         if message['component'] != self._component_name:
